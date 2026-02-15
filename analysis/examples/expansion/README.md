@@ -50,7 +50,7 @@
 | Level 2 | 05_model_grid.md | M1 Logit, M2 Poisson, M3 NB |
 | Level 2–3 | 06_evaluation_matrix.md | AUC, 오즈비/rate ratio, ΔAIC |
 | Level 3 | 07_decision_log.md | 모델 선택·로버스트니스 결정 |
-| Level 5 | 08_results_report.md | **최종 보고서** |
+| Level 5 | 08_results_report.md | **최종 보고서** (이상적 시나리오: 서론·본론·결론 명료, 모든 주장에 근거 표기) |
 
 ---
 

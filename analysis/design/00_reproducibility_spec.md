@@ -64,13 +64,29 @@
 | K-Fold CV | sklearn | `sklearn.model_selection.cross_val_score(estimator, X, y, cv=5, scoring='neg_log_loss')` | cv=5, scoring | random_state=42 (분할 재현) |
 | Train/Test 분할 | sklearn | `sklearn.model_selection.train_test_split(..., random_state=42)` | random_state=42 | 반드시 고정 |
 
-## 3. 랜덤 시드 정책
+## 3. 입력 자료형·형상 요구사항 (Input type requirements)
+
+코드 생성 시 아래를 준수한다. 상세 체크리스트는 `00_code_safeguards.md` §2 참조.
+
+| 함수/용도 | 입력 | 요구사항 |
+|-----------|------|----------|
+| OLS(y, X) | y | 1차원, shape (n,). 연속형. |
+| OLS(y, X) | X | 2차원, shape (n, k). 상수항 필요 시 sm.add_constant(X). |
+| Logit(y, X) | y | 1차원, **0과 1만**. |
+| Logit(y, X) | X | 2차원 (n, k). |
+| GLM(Poisson), NB | y | 1차원, 비음정수(count). |
+| GLM, NB | X | 2차원 (n, k). |
+| KaplanMeier.fit | durations, event_observed | 1차원; event_observed는 bool 또는 0/1. |
+| CoxPHFitter.fit | df, duration_col, event_col | df는 DataFrame; duration_col, event_col은 컬럼명 **문자열**. |
+| train_test_split, cross_val_score, KFold | — | `random_state=42` 필수. |
+
+## 4. 랜덤 시드 정책
 
 - **전역:** 분석 스크립트 상단에서 `np.random.seed(42)`, `random.seed(42)` 설정.
 - **sklearn:** `random_state=42` (또는 본 문서에 명시한 값) 사용.
 - **train_test_split / KFold / StratifiedKFold:** 동일 seed 사용.
 
-## 4. 버전 기록
+## 5. 버전 기록
 
 - 실행 폴더에 `pip-freeze.txt` 를 Level 0 완료 시점 및 주요 변경 후 보관.
 - 08_results_report.md "재현 환경" 절에서 Python 버전 + pip-freeze.txt 경로 명시.

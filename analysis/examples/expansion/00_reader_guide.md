@@ -24,7 +24,7 @@
 | 5 | **05_model_grid** | 사용 모델(Logit, Poisson, NB) 명세·피처 코딩 |
 | 6 | **06_evaluation_matrix** | 모델 성능(AUC, AIC)·계수(오즈비/rate ratio)와 95% CI |
 | 7 | **07_decision_log** | 왜 NB를 채택했는지, 로버스트니스는 어떻게 했는지 결정 요약 |
-| 8 | **08_results_report** | 위 내용을 한데 모은 최종 보고서(요약·결과·한계·재현성) |
+| 8 | **08_results_report** | 위 내용을 한데 모은 최종 보고서. **서론·본론·결론** 구분과 **근거(출처)** 표기가 명확한 이상적 시나리오 구조. |
 
 설계 쪽 **전체 절차**는 `analysis/design/00_process_overview.md`를 보면 된다.
 

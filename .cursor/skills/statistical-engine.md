@@ -11,8 +11,16 @@ Perform structured statistical analysis for Samsung account-based appliance expa
 | `analysis/design/00_reproducibility_spec.md` | 라이브러리·함수·파라미터·랜덤시드 — 모든 분석 코드는 여기 명시된 것만 사용 |
 | `analysis/design/01_visualization_strategy.md` | 데이터 특성 → 차트 유형 → 라이브러리/함수 — 모든 시각화는 여기 따라 수행 |
 | `analysis/design/glossary.md` | 핵심 용어 1줄 정의 (estimand, OR, AIC, Phase lock 등) — 보고·예시 설명 시 참조 |
-| `analysis/design/templates/08_results_report.md` | 최종 보고서 **템플릿** — Level 5 산출물 형식 |
+| `analysis/design/templates/08_results_report.md` | 최종 보고서 **템플릿** — 서론·본론·결론·근거 명시 구조 (Level 5). |
+| `analysis/design/08_report_quality_rubric.md` | 보고서 품질 **100점 루브릭** — 서론/본론/결론·근거 요구사항·자가 채점. 100점 목표 반복 개선. |
 | **실행 폴더** (예: `analysis/examples/expansion/`, `analysis/runs/<이름>`) | 01_charter, 02~08, sql — 해당 분석의 채워진 산출물. **권장:** 00_reader_guide.md 또는 README에 수행 절차 요약을 두어 초심자가 따라가기 쉽게 함. |
+| `analysis/design/00_code_safeguards.md` | SQL·Python 자료형·파라미터 안전장치 — 스키마/함수 단일 출처, 입력 타입·체크리스트 (에이전트/LLM 최적화). |
+
+## CODE GENERATION SAFEGUARDS (코드·쿼리 생성 안전장치)
+
+- **SQL 생성 전:** 실행 폴더의 **02_data_contract.md** §2를 읽고, 사용할 테이블명·컬럼명·Type을 나열한 뒤 그 목록만 참조해 쿼리 작성. 02에 없는 컬럼/테이블을 만들지 않음.
+- **Python 생성 전:** **00_reproducibility_spec.md** 에서 사용할 함수·파라미터를 확인하고, **00_code_safeguards.md** §2의 입력 자료형·형상 요구사항(y, X, durations 등)을 충족하도록 작성. `random_state=42` 누락 금지.
+- **단일 출처:** SQL → 02_data_contract. Python → 00_reproducibility_spec + 00_code_safeguards. 규칙 R8 준수.
 
 ## CORE CAPABILITIES & SELECTION (무엇을 할 수 있는지, 어떻게 선택하는지)
 

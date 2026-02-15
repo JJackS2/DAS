@@ -23,9 +23,11 @@
 analysis/design/
 ├── README.md                    # 본 문서
 ├── 00_process_overview.md       # Level 0~5 절차 한 페이지 요약 (초심자·독자 가이드용)
-├── 00_reproducibility_spec.md   # 재현성 명세 (함수·파라미터·시드)
+├── 00_reproducibility_spec.md   # 재현성 명세 (함수·파라미터·시드·입력 타입 §3)
+├── 00_code_safeguards.md        # SQL/Python 자료형·파라미터 안전장치 (에이전트/LLM 최적화)
 ├── 01_visualization_strategy.md # 시각화 전략 (데이터→차트→라이브러리)
 ├── glossary.md                  # 핵심 용어 1줄 정의 (estimand, OR, AIC, Phase lock 등)
+├── 08_report_quality_rubric.md  # 08 보고서 품질 100점 루브릭·서론/본론/결론·근거·자가 채점
 ├── requirements-analysis.txt    # Python 패키지 버전
 └── templates/                   # 실행 시 복사할 템플릿
     ├── 01_charter.md            # 주제·연구질문·인과 허용 여부 (최소 필드)
