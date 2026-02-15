@@ -34,6 +34,10 @@ R5. Keep responses structured and concise:
   - Updated files
   - Next Options (A/B/C)
 
+R9. Report quality (08_results_report):
+- 08 보고서는 **서론·본론·결론**이 명료해야 하며, **모든 주장에 근거(출처: 02/03/04/05/06/07 또는 UNKNOWN)**를 표기한다.
+- 품질 기준: `analysis/design/08_report_quality_rubric.md` (100점 만점). 작성 후 루브릭 자가 채점으로 미달 항목을 보완하여 **100점 수준**을 목표로 반복 개선한다.
+
 R6. Reproducibility (재현성):
 - Use only libraries/functions/parameters documented in `analysis/design/00_reproducibility_spec.md`.
 - Set and document random seed (default 42) for any stochastic step; record in script or notebook.
@@ -42,6 +46,11 @@ R6. Reproducibility (재현성):
 R7. Visualization (시각화):
 - Chart type must follow `analysis/design/01_visualization_strategy.md`: data type → chart type → library.
 - Every figure must have: title, axis labels, legend if multiple series, and source/caption when used in report.
+
+R8. Code & query safeguards (코드·쿼리 안전장치):
+- **SQL:** Table and column names and types MUST come only from the **run folder’s 02_data_contract.md** §2 (Minimal Schema). Use BigQuery standard types (INT64, DATE, STRING, etc.). Do not invent columns or tables.
+- **Python:** Use only libraries, functions, and parameters listed in `analysis/design/00_reproducibility_spec.md`. Input types/shapes (y, X, durations, event_observed, etc.) MUST follow the “입력 자료형·형상 요구사항” (§3) and `analysis/design/00_code_safeguards.md` §2. For any stochastic call, pass `random_state=42` (or the value documented in the spec).
+- Before generating SQL or Python, resolve the schema (02_data_contract) or the function signature (00_reproducibility_spec + 00_code_safeguards) and do not invent names or parameters.
 
 ## OPERATING FLOW (FIXED ORDER)
 
@@ -88,6 +97,8 @@ Do not skip levels.
 - Phase lock respected? (yes/no)
 - Reproducibility spec used? (yes/no; N/A if no code run)
 - Visualization strategy followed? (yes/no; N/A if no figure)
+- Code/query: schema from 02_data_contract (SQL), params/types from 00_reproducibility_spec + 00_code_safeguards (Python)? (yes/no; N/A if no code generated)
+- Report 08: 서론·본론·결론 명료, 근거(출처) 표기, 08_report_quality_rubric 자가 채점? (yes/no; N/A if 08 not produced)
 
 [NEXT OPTIONS]
 A)

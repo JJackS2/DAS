@@ -4,8 +4,8 @@
 Execute the Evolutionary Statistical Research OS for Samsung account expansion analysis with **reproducible** methods and **strategy-based** result explanation and visualization.
 
 ## BINDING DOCUMENTS (설계 vs 예시 분리)
-- **Rules:** `.cursor/rules/sros-kernel.mdc` (R0–R7, analysis type selection table).
-- **설계(Design):** `analysis/design/00_reproducibility_spec.md`, `analysis/design/01_visualization_strategy.md`, `analysis/design/templates/08_results_report.md` (템플릿). 절차 요약·용어는 `00_process_overview.md`, `glossary.md` 참조.
+- **Rules:** `.cursor/rules/sros-kernel.mdc` (R0–**R8**, analysis type selection table). R8: 코드·쿼리 안전장치(스키마/명세 단일 출처).
+- **설계(Design):** `analysis/design/00_reproducibility_spec.md`, `analysis/design/01_visualization_strategy.md`, `analysis/design/00_code_safeguards.md` (SQL/Python 타입·파라미터 안전장치), `analysis/design/templates/08_results_report.md` (템플릿). 절차 요약·용어는 `00_process_overview.md`, `glossary.md` 참조.
 - **실행 폴더(Run):** 현재 분석의 산출물(01_charter, 02~08, sql)은 **실행 폴더**에 둠. 예: `analysis/examples/expansion/`, `analysis/runs/<프로젝트명>`.
 - **독자 가이드 권장:** 실행 폴더에 **00_reader_guide.md** 또는 README 내 **수행 절차 요약**을 두어, 초심자가 "무엇을 수행하는지"를 따라가기 쉽게 함. design/00_process_overview.md, design/glossary.md를 참조해 작성.
 
@@ -20,6 +20,13 @@ Execute the Evolutionary Statistical Research OS for Samsung account expansion a
    - 시간-이벤트 → KM + Cox (§2.5).
 2. **연구 질문**을 실행 폴더의 04_hypothesis_tree.md에 적고, 위와 매핑하여 05_model_grid.md에 “estimand → 모델 클래스” 기록.
 3. **모델 비교/로버스트니스**는 Level 3에서 design/00_reproducibility_spec §2.6 및 rules “No arbitrary thresholds”에 따라 LRT/ΔAIC/BIC/CV만 사용.
+
+---
+
+## BEFORE GENERATING CODE (코드·쿼리 생성 전)
+
+- **SQL:** 실행 폴더의 **02_data_contract.md** §2를 읽고, 사용할 테이블·컬럼·Type 목록을 확정한 뒤 그 목록만 사용. 02에 없는 컬럼/테이블을 생성하지 않음 (R8, 00_code_safeguards §1).
+- **Python:** **00_reproducibility_spec.md** 에서 해당 절(§2.1~§2.6)의 함수·파라미터를 확인하고, **00_code_safeguards.md** §2의 입력 자료형·형상(y, X 등)을 만족하도록 작성. `random_state=42` 필수 (R8).
 
 ---
 
@@ -65,7 +72,7 @@ Execute the Evolutionary Statistical Research OS for Samsung account expansion a
 
 ### Level 5 — Research Evaluation
 **Artifacts:** 실행 폴더의 08_results_report.md (design/templates/08_results_report.md 구조 준수).  
-**Tasks:** novelty, 이론적 기여, 한계, publication 가능성.  
+**Tasks:** novelty, 이론적 기여, 한계, publication 가능성. **품질:** design/08_report_quality_rubric.md 기준 100점 목표; **서론·본론·결론** 명료, **모든 주장에 근거(문서+절)** 표기; 작성 후 루브릭 자가 채점으로 미달 항목 보완. 결론은 본론 수치·문서 직접 인용 요약, 다음 단계 A/B/C 구체화.  
 **Visualization:** 보고서 내 그림 목록·캡션·출처 정리.
 
 ---
