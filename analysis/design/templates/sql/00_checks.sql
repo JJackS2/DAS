@@ -1,5 +1,6 @@
--- 00_checks.sql — Data integrity checks for Samsung account expansion
--- Run against BigQuery (or your warehouse). Fill project/dataset/table placeholders.
+-- 00_checks.sql — Data integrity checks
+-- 프로젝트: [프로젝트명]
+-- 테이블: [테이블명]. 실행 폴더에서 프로젝트/데이터셋/테이블 채울 것.
 
 -- 1) Key uniqueness
 -- SELECT key_column, COUNT(*) AS n
@@ -11,7 +12,7 @@
 -- SELECT
 --   COUNT(*) AS total_rows,
 --   COUNTIF(col_a IS NULL) AS missing_col_a,
---   COUNTIF(col_b IS NULL) AS missing_col_b
+--   ...
 -- FROM `project.dataset.table`;
 
 -- 3) Date range coverage
@@ -19,4 +20,4 @@
 -- FROM `project.dataset.table`;
 
 -- 4) Referential consistency (if applicable)
--- [Add JOIN checks between tables]
+-- [JOIN checks]
