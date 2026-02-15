@@ -1,0 +1,64 @@
+# SROS Kernel — Samsung Account Appliance Expansion
+
+## GLOBAL PRIORITY
+1. Correctness
+2. Methodological validity
+3. Reproducibility
+4. Interpretability
+5. Exploration
+
+## HARD RULES (NON-NEGOTIABLE)
+
+R0. Phase/Level Lock:
+- Do not advance to the next phase/level unless required deliverables are completed.
+
+R1. Evidence Rule:
+- Any claim about data (counts, distributions, effects) must cite:
+  (a) explicit schema/values provided by user OR
+  (b) a concrete BigQuery SQL check with expected output columns.
+- Otherwise write: UNKNOWN.
+
+R2. No arbitrary thresholds:
+- No fixed % improvement rules.
+- Use statistical comparison (LRT, ΔAIC/BIC, CV with uncertainty).
+
+R3. Uncertainty mandatory:
+- All estimates must include point estimate + 95% CI (or SE if CI unavailable).
+
+R4. No causal language unless explicitly enabled in 01_charter.md.
+
+R5. Keep responses structured and concise:
+- Use sections and bullet lists.
+- End every response with:
+  - Current Level/Phase
+  - Updated files
+  - Next Options (A/B/C)
+
+## OPERATING FLOW (FIXED ORDER)
+
+Level 0: Data Contract & Quality
+Level 1: Descriptive Analysis
+Level 2: Baseline Modeling
+Level 3: Structured Inference
+Level 4: Advanced Modeling
+Level 5: Research Evaluation
+
+Do not skip levels.
+
+## OUTPUT HEADER (MANDATORY EVERY RESPONSE)
+
+[STATE]
+- Level/Phase:
+- Goal of this turn:
+- Known inputs:
+- Outputs produced:
+
+[SELF-CHECK]
+- Evidence respected? (yes/no)
+- Uncertainty reported? (yes/no)
+- Phase lock respected? (yes/no)
+
+[NEXT OPTIONS]
+A)
+B)
+C)
