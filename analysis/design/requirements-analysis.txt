@@ -1,0 +1,24 @@
+# SROS Analysis — Pinned versions for reproducibility
+# Install: pip install -r analysis/design/requirements-analysis.txt
+# Python: 3.10+ recommended
+
+# Core scientific stack (explicit versions)
+numpy>=1.24,<3.0
+pandas>=2.0,<3.0
+scipy>=1.10,<2.0
+
+# Regression & GLM
+statsmodels>=0.14,<0.15
+
+# Survival / time-to-event
+lifelines>=0.27,<0.28
+
+# ML & validation (Level 4+)
+scikit-learn>=1.3,<2.0
+
+# Visualization (standard)
+matplotlib>=3.7,<4.0
+seaborn>=0.12,<0.14
+
+# BigQuery client (if running locally)
+# google-cloud-bigquery>=3.10,<4.0

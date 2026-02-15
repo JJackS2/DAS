@@ -1,0 +1,95 @@
+# SROS Kernel — Samsung Account Appliance Expansion
+
+## GLOBAL PRIORITY
+1. Correctness
+2. Methodological validity
+3. Reproducibility
+4. Interpretability
+5. Exploration
+
+## HARD RULES (NON-NEGOTIABLE)
+
+R0. Phase/Level Lock:
+- Do not advance to the next phase/level unless required deliverables are completed.
+
+R1. Evidence Rule:
+- Any claim about data (counts, distributions, effects) must cite:
+  (a) explicit schema/values provided by user OR
+  (b) a concrete BigQuery SQL check with expected output columns.
+- Otherwise write: UNKNOWN.
+
+R2. No arbitrary thresholds:
+- No fixed % improvement rules.
+- Use statistical comparison (LRT, ΔAIC/BIC, CV with uncertainty).
+
+R3. Uncertainty mandatory:
+- All estimates must include point estimate + 95% CI (or SE if CI unavailable).
+
+R4. No causal language unless explicitly enabled in 01_charter.md.
+
+R5. Keep responses structured and concise:
+- Use sections and bullet lists.
+- End every response with:
+  - Current Level/Phase
+  - Updated files
+  - Next Options (A/B/C)
+
+R6. Reproducibility (재현성):
+- Use only libraries/functions/parameters documented in `analysis/design/00_reproducibility_spec.md`.
+- Set and document random seed (default 42) for any stochastic step; record in script or notebook.
+- Record environment: Python version + `pip freeze` output in the **run folder** (e.g. `analysis/examples/expansion/pip-freeze.txt` or `analysis/runs/<project>/pip-freeze.txt`).
+
+R7. Visualization (시각화):
+- Chart type must follow `analysis/design/01_visualization_strategy.md`: data type → chart type → library.
+- Every figure must have: title, axis labels, legend if multiple series, and source/caption when used in report.
+
+## OPERATING FLOW (FIXED ORDER)
+
+Level 0: Data Contract & Quality
+Level 1: Descriptive Analysis
+Level 2: Baseline Modeling
+Level 3: Structured Inference
+Level 4: Advanced Modeling
+Level 5: Research Evaluation
+
+Do not skip levels.
+
+## ANALYSIS TYPE & SELECTION (주제별 분석 선택)
+
+- **결과 변수 유형**과 **연구 질문**에 따라 아래 한 가지 이상을 선택한다. 선택 근거는 05_model_grid.md에 기록한다.
+
+| 결과 변수 (Outcome) | 연구 질문 예시 | 선택 분석 | 참조 (함수/파라미터) |
+|--------------------|----------------|-----------|----------------------|
+| 연속형 (매출, 사용량 등) | “X가 Y에 얼마나 연관?” | OLS 회귀 | 00_reproducibility_spec §2.2 |
+| 이항 (도입/미도입, 이탈/유지) | “도입 확률에 어떤 요인이?” | 로지스틱 회귀 | §2.3 |
+| 횟수 (추가 구매 대수, 이벤트 수) | “확장 횟수에 어떤 요인이?” | Poisson / NB GLM | §2.4 |
+| 시간-이벤트 (첫 구매까지 기간 등) | “시간에 따른 이벤트 발생” | Kaplan-Meier, Cox PH | §2.5 |
+| 세그먼트 비교 (다집단) | “그룹 A vs B 차이” | 조건부 기술통계 + 시각화, 필요 시 회귀(집단 더미) | §2.1, 01_visualization_strategy |
+
+- **복합 주제:** 예) “도입 여부 + 도입 후 확장 횟수” → 로지스틱 + Poisson/NB 각각 적용 후 05_model_grid.md에 estimand별로 정리.
+
+## DATA CHARACTERIZATION (데이터셋 특성 설명 및 특징 피처)
+
+- **데이터셋 특성 설명:** 실행 폴더의 **03_data_inventory.md** §1 표(설계: `analysis/design/templates/03_data_inventory.md`) 관점(범위·규모 → 변수 수준 → 분포 → 조건부 요약 → 연관 구조 → 특징 피처)에 따라 기술. 모든 수치는 증거(스키마/SQL/집계) 또는 UNKNOWN.
+- **특징 있는 피처:** 03_data_inventory §5 정의 — (a) 결과와의 연관(상관), (b) 세그먼트 간 차이, (c) 변동(CV), (d) 결측 패턴, (e) 분포 특이. 후보 목록은 §5.2 표에 "근거 지표"와 함께 기록. 임의 고정 기준 금지(R2); 상대 비교 또는 후속 모델 유의성으로 보완.
+- **실행 폴더:** 산출물 01_charter, 02~08, sql은 **실행 폴더**에 둠 (예: `analysis/examples/expansion/`, `analysis/runs/<프로젝트명>`).
+
+## OUTPUT HEADER (MANDATORY EVERY RESPONSE)
+
+[STATE]
+- Level/Phase:
+- Goal of this turn:
+- Known inputs:
+- Outputs produced:
+
+[SELF-CHECK]
+- Evidence respected? (yes/no)
+- Uncertainty reported? (yes/no)
+- Phase lock respected? (yes/no)
+- Reproducibility spec used? (yes/no; N/A if no code run)
+- Visualization strategy followed? (yes/no; N/A if no figure)
+
+[NEXT OPTIONS]
+A)
+B)
+C)
