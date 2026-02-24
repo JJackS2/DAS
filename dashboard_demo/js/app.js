@@ -21,38 +21,108 @@
   var REGION_LABELS = { NAM: '북미', SAM: '남미', WEU: '서유럽', EEU: '동유럽', NEU: '북유럽', SEU: '남유럽', EAS: '동아시아', SEA: '동남아', SAS: '남아시아', WAS: '서아시아', NAF: '북아프리카', SAF: '남아프리카' };
   var REGIONS_ENTITIES = { NAM: ['E1', 'E2'], SAM: ['E1', 'E2'], WEU: ['E1', 'E2'], EEU: ['E1', 'E2'], NEU: ['E1', 'E2'], SEU: ['E1', 'E2'], EAS: ['E1', 'E2'], SEA: ['E1', 'E2'], SAS: ['E1', 'E2'], WAS: ['E1', 'E2'], NAF: ['E1', 'E2'], SAF: ['E1', 'E2'] };
   var ENTITY_LABELS = { E1: '법인1', E2: '법인2' };
-  var PRODUCT_GROUPS = ['REF', 'WSH', 'KIT', 'VAC', 'AIR', 'TV'];
-  var PRODUCT_LABELS = { REF: '냉장고', WSH: '세탁기', KIT: '주방', VAC: '청소기', AIR: '에어컨', TV: 'TV' };
   var MONTHS = ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06', '2024-07'];
+  var PERIOD_UNITS = [{ value: 'month', label: 'Month' }];
+  var COUNTRIES_PER_REGION = 60;
+
+  var PRODUCT_LEVEL1_ORDER = ['Living', 'Kitchen', 'Air'];
+  var PRODUCT_HIERARCHY = {
+    Living: {
+      Washer: ['Drum Washer', 'Top-Load Washer'],
+      Dryer: ['Gas Dryer', 'Electric Dryer', 'Heat Pump Dryer']
+    },
+    Kitchen: {
+      Oven: ['Oven 3'],
+      Cooktop: ['Cooktop 3']
+    },
+    Air: {
+      'Air Conditioner': ['FAC', 'RAC'],
+      'Air Purifier': ['Air Purifier 3']
+    }
+  };
+
+  function padNum(n, width) {
+    var s = String(n);
+    while (s.length < width) s = '0' + s;
+    return s;
+  }
+
+  function buildRegionCountries() {
+    var map = {};
+    REGIONS.forEach(function(region) {
+      var countries = [];
+      for (var i = 1; i <= COUNTRIES_PER_REGION; i++) {
+        countries.push(region + '-C' + padNum(i, 2));
+      }
+      map[region] = countries;
+    });
+    return map;
+  }
+
+  function buildProductHierarchyMaps() {
+    var level1 = PRODUCT_LEVEL1_ORDER.slice();
+    var level2ByL1 = {};
+    var level3ByL1L2 = {};
+    var leafNodes = [];
+    level1.forEach(function(l1) {
+      var level2Map = PRODUCT_HIERARCHY[l1] || {};
+      var level2 = Object.keys(level2Map);
+      level2ByL1[l1] = level2;
+      level2.forEach(function(l2) {
+        var level3 = (level2Map[l2] || []).slice();
+        if (!level3.length) level3 = [l2 + ' 3'];
+        level3ByL1L2[l1 + '|' + l2] = level3;
+        level3.forEach(function(l3) {
+          leafNodes.push({ level1: l1, level2: l2, level3: l3 });
+        });
+      });
+    });
+    return { level1: level1, level2ByL1: level2ByL1, level3ByL1L2: level3ByL1L2, leafNodes: leafNodes };
+  }
+
+  var REGION_COUNTRIES = buildRegionCountries();
+  var PRODUCT_META = buildProductHierarchyMaps();
+  var PRODUCT_LEVEL1 = PRODUCT_META.level1;
+  var PRODUCT_LEVEL2_BY_L1 = PRODUCT_META.level2ByL1;
+  var PRODUCT_LEVEL3_BY_L1L2 = PRODUCT_META.level3ByL1L2;
+  var PRODUCT_LEAF_NODES = PRODUCT_META.leafNodes;
 
   function buildRawData() {
     var out = [];
     var seed = 12345;
     for (var mi = 0; mi < MONTHS.length; mi++) {
       for (var ri = 0; ri < REGIONS.length; ri++) {
-        var entities = REGIONS_ENTITIES[REGIONS[ri]] || ['ENT'];
+        var region = REGIONS[ri];
+        var entities = REGIONS_ENTITIES[region] || ['ENT'];
+        var countries = REGION_COUNTRIES[region] || ['XX'];
         for (var ei = 0; ei < entities.length; ei++) {
-          for (var pi = 0; pi < PRODUCT_GROUPS.length; pi++) {
-            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-            var sales = 600 + (seed % 1800);
-            var smartRatio = 0.68 + (seed % 20) / 100;
-            var connRatio = 0.65 + (seed % 25) / 100;
-            var smart_sales = Math.round(sales * smartRatio);
-            var connected = Math.round(smart_sales * connRatio);
-            var smart_sales_rate_pct = sales > 0 ? (smart_sales / sales * 100) : 0;
-            var connected_rate_pct = smart_sales > 0 ? (connected / smart_sales * 100) : 0;
-            out.push({
-              year_month: MONTHS[mi],
-              region: REGIONS[ri],
-              entity: entities[ei],
-              country: 'XX',
-              product_group: PRODUCT_GROUPS[pi],
-              sales: sales,
-              smart_sales: smart_sales,
-              connected: connected,
-              smart_sales_rate_pct: Math.round(smart_sales_rate_pct * 10) / 10,
-              connected_rate_pct: Math.round(connected_rate_pct * 10) / 10
-            });
+          for (var ci = 0; ci < countries.length; ci++) {
+            for (var pi = 0; pi < PRODUCT_LEAF_NODES.length; pi++) {
+              var product = PRODUCT_LEAF_NODES[pi];
+              seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+              var sales = 600 + (seed % 1800);
+              var smartRatio = 0.68 + (seed % 20) / 100;
+              var connRatio = 0.65 + (seed % 25) / 100;
+              var smart_sales = Math.round(sales * smartRatio);
+              var connected = Math.round(smart_sales * connRatio);
+              var smart_sales_rate_pct = sales > 0 ? (smart_sales / sales * 100) : 0;
+              var connected_rate_pct = smart_sales > 0 ? (connected / smart_sales * 100) : 0;
+              out.push({
+                year_month: MONTHS[mi],
+                region: region,
+                entity: entities[ei],
+                country: countries[ci],
+                product_group: product.level2,
+                product_level1: product.level1,
+                product_level2: product.level2,
+                product_level3: product.level3,
+                sales: sales,
+                smart_sales: smart_sales,
+                connected: connected,
+                smart_sales_rate_pct: Math.round(smart_sales_rate_pct * 10) / 10,
+                connected_rate_pct: Math.round(connected_rate_pct * 10) / 10
+              });
+            }
           }
         }
       }
@@ -62,9 +132,10 @@
 
   var rawData = buildRawData();
   var filterRegion = null;
-  var filterProductGroup = null;
+  var filterProduct = { level1: null, level2: null, level3: null };
   var filterPeriodStart = MONTHS[0];
   var filterPeriodEnd = MONTHS[MONTHS.length - 1];
+  var filterPeriodUnit = PERIOD_UNITS[0].value;
   var drillStack = [];
   var pivotSort = { key: null, asc: true };
   var pivotPage = 0;
@@ -75,6 +146,9 @@
   var chartBarProduct = null;
   var drillIntent = false;
   var drillDownMode = false;
+  var selectedLineName = null;
+  var filteredDataCacheKey = '';
+  var filteredDataCacheRows = [];
   var guideStep = 0;
   var GUIDE_STEPS = 4;
 
@@ -124,13 +198,60 @@
     }
   }
 
+  function getCurrentProductPathLabel() {
+    var parts = [];
+    if (filterProduct.level1) parts.push(filterProduct.level1);
+    if (filterProduct.level2) parts.push(filterProduct.level2);
+    if (filterProduct.level3) parts.push(filterProduct.level3);
+    return parts.join(' > ');
+  }
+
+  function cloneProductFilter(src) {
+    src = src || { level1: null, level2: null, level3: null };
+    return {
+      level1: src.level1 || null,
+      level2: src.level2 || null,
+      level3: src.level3 || null
+    };
+  }
+
+  function setProductFilter(next) {
+    filterProduct = cloneProductFilter(next);
+  }
+
+  function pushDrillState() {
+    drillStack.push({
+      region: filterRegion,
+      product: cloneProductFilter(filterProduct)
+    });
+  }
+
   function getFilteredData() {
-    var list = rawData.slice();
-    if (filterRegion) list = list.filter(function(r) { return r.region === filterRegion; });
-    if (filterProductGroup) list = list.filter(function(r) { return r.product_group === filterProductGroup; });
-    if (filterPeriodStart) list = list.filter(function(r) { return r.year_month >= filterPeriodStart; });
-    if (filterPeriodEnd) list = list.filter(function(r) { return r.year_month <= filterPeriodEnd; });
-    return list;
+    var cacheKey = [
+      filterRegion || '',
+      filterProduct.level1 || '',
+      filterProduct.level2 || '',
+      filterProduct.level3 || '',
+      filterPeriodStart || '',
+      filterPeriodEnd || '',
+      filterPeriodUnit || ''
+    ].join('|');
+    if (cacheKey === filteredDataCacheKey) return filteredDataCacheRows;
+
+    var out = [];
+    for (var i = 0; i < rawData.length; i++) {
+      var row = rawData[i];
+      if (filterRegion && row.region !== filterRegion) continue;
+      if (filterProduct.level1 && row.product_level1 !== filterProduct.level1) continue;
+      if (filterProduct.level2 && row.product_level2 !== filterProduct.level2) continue;
+      if (filterProduct.level3 && row.product_level3 !== filterProduct.level3) continue;
+      if (filterPeriodStart && row.year_month < filterPeriodStart) continue;
+      if (filterPeriodEnd && row.year_month > filterPeriodEnd) continue;
+      out.push(row);
+    }
+    filteredDataCacheKey = cacheKey;
+    filteredDataCacheRows = out;
+    return out;
   }
 
   function getKPI(list) {
@@ -151,6 +272,10 @@
 
   function getMetricValueAgg(list) {
     var k = getKPI(list);
+    return getMetricValueFromKPI(k);
+  }
+
+  function getMetricValueFromKPI(k) {
     switch (state.metric) {
       case 'sales': return k.sales;
       case 'smart_sales': return k.smart_sales;
@@ -198,19 +323,66 @@
     });
   }
 
+  function initPeriodUnitFilter() {
+    var unitEl = document.getElementById('filter-period-unit');
+    if (!unitEl) return;
+    unitEl.innerHTML = PERIOD_UNITS.map(function(unit) {
+      return '<option value="' + unit.value + '">' + unit.label + '</option>';
+    }).join('');
+    unitEl.value = filterPeriodUnit;
+    unitEl.addEventListener('change', function() {
+      filterPeriodUnit = this.value || PERIOD_UNITS[0].value;
+      updateState();
+    });
+  }
+
+  function getProductDrillLevel() {
+    if (!filterProduct.level1) return 1;
+    if (!filterProduct.level2) return 2;
+    return 3;
+  }
+
+  function getProductOptionsByLevel(level) {
+    if (level === 1) {
+      return PRODUCT_LEVEL1.slice();
+    }
+    if (level === 2 && filterProduct.level1) {
+      return (PRODUCT_LEVEL2_BY_L1[filterProduct.level1] || []).slice();
+    }
+    if (level === 3 && filterProduct.level1 && filterProduct.level2) {
+      return (PRODUCT_LEVEL3_BY_L1L2[filterProduct.level1 + '|' + filterProduct.level2] || []).slice();
+    }
+    return [];
+  }
+
+  function applyProductSelection(level, value) {
+    if (level === 1) {
+      if (filterProduct.level1 === value && !filterProduct.level2 && !filterProduct.level3) {
+        setProductFilter({ level1: null, level2: null, level3: null });
+      } else {
+        setProductFilter({ level1: value, level2: null, level3: null });
+      }
+      return;
+    }
+    if (level === 2) {
+      if (filterProduct.level2 === value && !filterProduct.level3) {
+        setProductFilter({ level1: filterProduct.level1, level2: null, level3: null });
+      } else {
+        setProductFilter({ level1: filterProduct.level1, level2: value, level3: null });
+      }
+      return;
+    }
+    if (level === 3) {
+      var nextL3 = filterProduct.level3 === value ? null : value;
+      setProductFilter({ level1: filterProduct.level1, level2: filterProduct.level2, level3: nextL3 });
+    }
+  }
+
   /** 필터 항목 렌더 — 지역·제품군 목록 */
   function renderFilterLists() {
-    var regions = [];
-    var products = [];
-    rawData.forEach(function(r) {
-      if (regions.indexOf(r.region) === -1) regions.push(r.region);
-      if (products.indexOf(r.product_group) === -1) products.push(r.product_group);
-    });
-    regions.sort();
-    products.sort();
-
     var regionList = document.getElementById('filter-region-list');
     if (regionList) {
+      var regions = REGIONS.slice().sort();
       regionList.innerHTML = regions.map(function(reg) {
         var active = filterRegion === reg ? ' active' : '';
         var label = REGION_LABELS[reg] || reg;
@@ -229,20 +401,64 @@
 
     var productList = document.getElementById('filter-product-list');
     if (productList) {
-      productList.innerHTML = products.map(function(pg) {
-        var active = filterProductGroup === pg ? ' active' : '';
-        var label = PRODUCT_LABELS[pg] || pg;
-        return '<button type="button" class="filter-chip' + active + '" data-product="' + pg + '">' + label + '</button>';
+      var drillLevel = getProductDrillLevel();
+      var options = getProductOptionsByLevel(drillLevel);
+      var backChip = '';
+      if (drillLevel === 2) {
+        backChip = '<button type="button" class="filter-chip" data-product-action="up-l1">← Level 1</button>';
+      } else if (drillLevel === 3) {
+        backChip = '<button type="button" class="filter-chip" data-product-action="up-l2">← Level 2</button>';
+      }
+      productList.innerHTML = backChip + options.map(function(name) {
+        var active = '';
+        if (drillLevel === 1 && filterProduct.level1 === name) active = ' active';
+        if (drillLevel === 2 && filterProduct.level2 === name) active = ' active';
+        if (drillLevel === 3 && filterProduct.level3 === name) active = ' active';
+        return '<button type="button" class="filter-chip' + active + '" data-product="' + name + '" data-product-level="' + drillLevel + '">' + name + '</button>';
       }).join('');
       productList.querySelectorAll('.filter-chip').forEach(function(btn) {
         btn.addEventListener('click', function() {
-          var pg = this.getAttribute('data-product');
-          filterProductGroup = filterProductGroup === pg ? null : pg;
+          var action = this.getAttribute('data-product-action');
+          if (action === 'up-l1') {
+            setProductFilter({ level1: null, level2: null, level3: null });
+            updateState();
+            renderFilterLists();
+            return;
+          }
+          if (action === 'up-l2') {
+            setProductFilter({ level1: filterProduct.level1, level2: null, level3: null });
+            updateState();
+            renderFilterLists();
+            return;
+          }
+          var level = Number(this.getAttribute('data-product-level') || '1');
+          var product = this.getAttribute('data-product');
+          applyProductSelection(level, product);
           updateState();
           renderFilterLists();
         });
       });
     }
+  }
+
+  function applyLineSelectionStyles(series) {
+    var hasSelection = !!selectedLineName;
+    return series.map(function(s) {
+      var selected = selectedLineName === s.name;
+      var faded = hasSelection && !selected;
+      var lineStyle = Object.assign({}, s.lineStyle || {});
+      var itemStyle = Object.assign({}, s.itemStyle || {});
+      var baseWidth = lineStyle.width != null ? lineStyle.width : 2;
+      lineStyle.width = selected ? Math.max(baseWidth + 1.2, 3.2) : (faded ? Math.max(baseWidth - 0.4, 1.2) : baseWidth);
+      lineStyle.opacity = faded ? 0.28 : 1;
+      itemStyle.opacity = faded ? 0.34 : 1;
+      return Object.assign({}, s, {
+        lineStyle: lineStyle,
+        itemStyle: itemStyle,
+        symbolSize: selected ? Math.max((s.symbolSize || 6) + 1, 7) : (s.symbolSize || 6),
+        opacity: faded ? 0.35 : 1
+      });
+    });
   }
 
   /** ECharts: 연결률 시계열 — X축(월), Y축(%) 여유 범위, 소수점 1자리 */
@@ -260,21 +476,22 @@
       var keyField = filterRegion ? 'entity' : 'region';
       var labelMap = filterRegion ? ENTITY_LABELS : REGION_LABELS;
       var byKey = {};
-      list.forEach(function(r) {
-        var key = r[keyField];
-        if (!key) return;
+      for (var i = 0; i < list.length; i++) {
+        var row = list[i];
+        var key = row[keyField];
+        if (!key) continue;
         if (!byKey[key]) byKey[key] = {};
-        if (!byKey[key][r.year_month]) byKey[key][r.year_month] = [];
-        byKey[key][r.year_month].push(r);
-      });
-
+        if (!byKey[key][row.year_month]) byKey[key][row.year_month] = { sales: 0, smart_sales: 0, connected: 0 };
+        byKey[key][row.year_month].sales += row.sales;
+        byKey[key][row.year_month].smart_sales += row.smart_sales;
+        byKey[key][row.year_month].connected += row.connected;
+      }
       var keys = Object.keys(byKey).sort();
       series = keys.map(function(key) {
         var values = months.map(function(ym) {
-          var rows = byKey[key][ym] || [];
-          if (!rows.length) return null;
-          var k = getKPI(rows);
-          return k.connected_rate_pct != null ? (Math.round(k.connected_rate_pct * 10) / 10) : null;
+          var m = byKey[key][ym];
+          if (!m || m.smart_sales <= 0) return null;
+          return Math.round((m.connected / m.smart_sales * 100) * 10) / 10;
         });
         return {
           name: labelMap[key] || key,
@@ -289,16 +506,20 @@
       });
     } else {
       var byMonth = {};
-      list.forEach(function(r) {
-        if (!byMonth[r.year_month]) byMonth[r.year_month] = [];
-        byMonth[r.year_month].push(r);
-      });
+      for (var j = 0; j < list.length; j++) {
+        var r = list[j];
+        if (!byMonth[r.year_month]) byMonth[r.year_month] = { sales: 0, smart_sales: 0, connected: 0 };
+        byMonth[r.year_month].sales += r.sales;
+        byMonth[r.year_month].smart_sales += r.smart_sales;
+        byMonth[r.year_month].connected += r.connected;
+      }
       var values = months.map(function(ym) {
-        var k = getKPI(byMonth[ym] || []);
-        return k.connected_rate_pct != null ? k.connected_rate_pct : null;
+        var m = byMonth[ym];
+        if (!m || m.smart_sales <= 0) return null;
+        return Math.round((m.connected / m.smart_sales * 100) * 10) / 10;
       });
       series = [{
-        name: '연결률',
+        name: 'Connection Rate',
         type: 'line',
         data: values,
         smooth: true,
@@ -314,6 +535,10 @@
       }];
     }
 
+    var names = series.map(function(s) { return s.name; });
+    if (selectedLineName && names.indexOf(selectedLineName) === -1) selectedLineName = null;
+    series = applyLineSelectionStyles(series);
+
     var allValues = [];
     series.forEach(function(s) {
       (s.data || []).forEach(function(v) {
@@ -327,7 +552,7 @@
     var yMin = Math.max(0, dataMin - pad);
     var yMax = Math.min(100, dataMax + pad);
     chartLine.setOption({
-      grid: { left: 52, right: 28, top: 28, bottom: 36 },
+      grid: { left: 84, right: 28, top: 28, bottom: 36 },
       tooltip: {
         trigger: 'axis',
         valueFormatter: function(v) { return v == null ? '—' : Number(v).toFixed(1) + '%'; }
@@ -335,22 +560,34 @@
       legend: drillDownMode ? {
         type: 'scroll',
         top: 2,
-        left: 52,
+        left: 92,
         right: 28,
         itemWidth: 10,
         itemHeight: 6,
         textStyle: { fontSize: 11 }
       } : { show: false },
-      xAxis: { type: 'category', data: months, name: '월', axisLabel: { rotate: 0 } },
+      xAxis: { type: 'category', data: months, axisLabel: { rotate: 0 } },
       yAxis: {
         type: 'value',
-        name: '연결률 (%)',
+        name: 'Connection Rate',
+        nameLocation: 'middle',
+        nameGap: 68,
+        nameRotate: 90,
         min: yMin,
         max: yMax,
         axisLabel: { formatter: function(v) { return Number(v).toFixed(1) + '%'; } }
       },
       series: series
     }, true);
+
+    chartLine.off('click');
+    chartLine.on('click', function(params) {
+      if (params.componentType !== 'series') return;
+      var name = params.seriesName;
+      if (!name) return;
+      selectedLineName = selectedLineName === name ? null : name;
+      renderLineChart();
+    });
   }
 
   /** ECharts: 지역별 가로 막대 — 드릴 시 해당 지역 법인별로 전환 */
@@ -360,30 +597,33 @@
     if (!chartBarRegion) chartBarRegion = echarts.init(dom);
     var list = getFilteredData();
     var titleEl = document.getElementById('chart-title-region');
-    var byKey, keys, getName;
+    var byKey = {};
+    var keys;
+    var getName;
+    var keyField;
+
     if (filterRegion) {
-      byKey = {};
-      list.forEach(function(r) {
-        if (!byKey[r.entity]) byKey[r.entity] = [];
-        byKey[r.entity].push(r);
-      });
-      keys = Object.keys(byKey).sort();
+      keyField = 'entity';
       getName = function(k) { return ENTITY_LABELS[k] || k; };
       if (titleEl) titleEl.textContent = '지역별 > ' + (REGION_LABELS[filterRegion] || filterRegion) + ' (법인별)';
     } else {
-      byKey = {};
-      list.forEach(function(r) {
-        if (!byKey[r.region]) byKey[r.region] = [];
-        byKey[r.region].push(r);
-      });
-      keys = Object.keys(byKey).sort();
+      keyField = 'region';
       getName = function(k) { return REGION_LABELS[k] || k; };
       if (titleEl) titleEl.textContent = '지역별';
     }
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      var key = row[keyField];
+      if (!key) continue;
+      if (!byKey[key]) byKey[key] = { sales: 0, smart_sales: 0, connected: 0 };
+      byKey[key].sales += row.sales;
+      byKey[key].smart_sales += row.smart_sales;
+      byKey[key].connected += row.connected;
+    }
+    keys = Object.keys(byKey).sort();
+
     var color = COLOR_MAP[state.metric] || COLOR_MAP.sales;
-    var data = keys.map(function(k) {
-      return { value: getMetricValueAgg(byKey[k]), name: k };
-    });
+    var data = keys.map(function(k) { return getMetricValueFromKPI(byKey[k]); });
     var yLabels = keys.map(getName);
     chartBarRegion.setOption({
       grid: { left: 56, right: 64, top: 16, bottom: 24 },
@@ -391,7 +631,7 @@
       yAxis: { type: 'category', data: yLabels, inverse: true },
       series: [{
         type: 'bar',
-        data: data.map(function(d) { return d.value; }),
+        data: data,
         itemStyle: { color: color },
         label: {
           show: true,
@@ -411,7 +651,7 @@
       if (key == null) return;
       if (filterRegion) return;
       if (drillIntent) {
-        drillStack.push({ region: filterRegion, product_group: filterProductGroup });
+        pushDrillState();
         drillIntent = false;
         showToast('드릴다운 적용됨. Back으로 복원할 수 있습니다.', true);
       }
@@ -425,7 +665,7 @@
       var key = getClickedKey(params);
       if (key == null) return;
       if (filterRegion) return;
-      drillStack.push({ region: filterRegion, product_group: filterProductGroup });
+      pushDrillState();
       showToast('드릴다운 적용됨. Back으로 복원할 수 있습니다.', true);
       filterRegion = key;
       updateState();
@@ -440,24 +680,49 @@
     if (!dom || typeof echarts === 'undefined') return;
     if (!chartBarProduct) chartBarProduct = echarts.init(dom);
     var list = getFilteredData();
+    var titleEl = document.getElementById('chart-title-product');
+    var keyField = 'product_level1';
+    var drillLevel = 1;
+    var orderedKeys = PRODUCT_LEVEL1.slice();
+
+    if (filterProduct.level1 && !filterProduct.level2) {
+      keyField = 'product_level2';
+      drillLevel = 2;
+      orderedKeys = (PRODUCT_LEVEL2_BY_L1[filterProduct.level1] || []).slice();
+      if (titleEl) titleEl.textContent = '제품군별 > ' + filterProduct.level1 + ' (Level 2)';
+    } else if (filterProduct.level1 && filterProduct.level2) {
+      keyField = 'product_level3';
+      drillLevel = 3;
+      orderedKeys = (PRODUCT_LEVEL3_BY_L1L2[filterProduct.level1 + '|' + filterProduct.level2] || []).slice();
+      if (titleEl) titleEl.textContent = '제품군별 > ' + filterProduct.level1 + ' > ' + filterProduct.level2 + ' (Level 3)';
+    } else if (titleEl) {
+      titleEl.textContent = '제품군별 (Level 1)';
+    }
+
     var byProduct = {};
-    list.forEach(function(r) {
-      if (!byProduct[r.product_group]) byProduct[r.product_group] = [];
-      byProduct[r.product_group].push(r);
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      var key = row[keyField];
+      if (!key) continue;
+      if (!byProduct[key]) byProduct[key] = { sales: 0, smart_sales: 0, connected: 0 };
+      byProduct[key].sales += row.sales;
+      byProduct[key].smart_sales += row.smart_sales;
+      byProduct[key].connected += row.connected;
+    }
+    orderedKeys = orderedKeys.filter(function(name) { return !!byProduct[name]; });
+    Object.keys(byProduct).forEach(function(name) {
+      if (orderedKeys.indexOf(name) === -1) orderedKeys.push(name);
     });
-    var products = Object.keys(byProduct).sort();
-    var productLabels = products.map(function(pg) { return PRODUCT_LABELS[pg] || pg; });
+
     var color = COLOR_MAP[state.metric] || COLOR_MAP.sales;
-    var data = products.map(function(pg) {
-      return { value: getMetricValueAgg(byProduct[pg]), name: pg };
-    });
+    var data = orderedKeys.map(function(name) { return getMetricValueFromKPI(byProduct[name]); });
     chartBarProduct.setOption({
       grid: { left: 56, right: 64, top: 16, bottom: 24 },
       xAxis: { type: 'value', name: state.metric, axisLabel: { formatter: isRateMetric() ? '{value}%' : '{value}' } },
-      yAxis: { type: 'category', data: productLabels, inverse: true },
+      yAxis: { type: 'category', data: orderedKeys, inverse: true },
       series: [{
         type: 'bar',
-        data: data.map(function(d) { return d.value; }),
+        data: data,
         itemStyle: { color: color },
         label: {
           show: true,
@@ -468,18 +733,19 @@
     }, true);
     chartBarProduct.off('click').off('dblclick');
     function getProductName(params) {
-      return params.name != null ? params.name : (products[params.dataIndex]);
+      var idx = params.dataIndex;
+      return orderedKeys[idx] != null ? orderedKeys[idx] : null;
     }
     chartBarProduct.on('click', function(params) {
       if (params.componentType !== 'series') return;
       var name = getProductName(params);
       if (name == null) return;
       if (drillIntent) {
-        drillStack.push({ region: filterRegion, product_group: filterProductGroup });
+        pushDrillState();
         drillIntent = false;
         showToast('드릴다운 적용됨. Back으로 복원할 수 있습니다.', true);
       }
-      filterProductGroup = name;
+      applyProductSelection(drillLevel, name);
       updateState();
       renderFilterLists();
     });
@@ -487,9 +753,9 @@
       if (params.componentType !== 'series') return;
       var name = getProductName(params);
       if (name == null) return;
-      drillStack.push({ region: filterRegion, product_group: filterProductGroup });
+      pushDrillState();
       showToast('드릴다운 적용됨. Back으로 복원할 수 있습니다.', true);
-      filterProductGroup = name;
+      applyProductSelection(drillLevel, name);
       updateState();
       renderFilterLists();
     });
@@ -498,12 +764,13 @@
   function updateSelection() {
     var el = document.getElementById('selection');
     if (!el) return;
-    if (filterRegion == null && filterProductGroup == null) {
+    var productLabel = getCurrentProductPathLabel();
+    if (filterRegion == null && !productLabel) {
       el.textContent = '선택: 글로벌 (전체)';
     } else {
       var parts = [];
       if (filterRegion) parts.push('지역 ' + (REGION_LABELS[filterRegion] || filterRegion));
-      if (filterProductGroup) parts.push('제품군 ' + (PRODUCT_LABELS[filterProductGroup] || filterProductGroup));
+      if (productLabel) parts.push('제품군 ' + productLabel);
       if (drillStack.length) {
         el.innerHTML = '선택: ' + parts.join(', ') + ' <span class="badge">의존 적용</span>';
       } else {
@@ -523,6 +790,12 @@
     });
   }
 
+  function updateDataRowCount() {
+    var el = document.getElementById('data-row-count');
+    if (!el) return;
+    el.textContent = 'Rows: ' + fmtNum(rawData.length);
+  }
+
   function updateDrillModeButton() {
     var btn = document.getElementById('btn-drill-mode');
     if (!btn) return;
@@ -533,6 +806,7 @@
   function updateState() {
     setThemeByMetric(state.metric);
     updateSelection();
+    updateDataRowCount();
     updateKPI();
     updateDrillModeButton();
     renderLineChart();
@@ -545,21 +819,23 @@
   function getPivotRows() {
     var list = getFilteredData();
     var byKey = {};
-    list.forEach(function(r) {
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
       var k = r.region;
-      if (!byKey[k]) byKey[k] = [];
-      byKey[k].push(r);
-    });
+      if (!byKey[k]) byKey[k] = { sales: 0, smart_sales: 0, connected: 0 };
+      byKey[k].sales += r.sales;
+      byKey[k].smart_sales += r.smart_sales;
+      byKey[k].connected += r.connected;
+    }
     return Object.keys(byKey).sort().map(function(k) {
-      var rows = byKey[k];
-      var kpi = getKPI(rows);
+      var kpi = byKey[k];
       return {
         dim: k,
         sales: kpi.sales,
         smart_sales: kpi.smart_sales,
         connected: kpi.connected,
-        smart_sales_rate_pct: kpi.smart_sales_rate_pct,
-        connected_rate_pct: kpi.connected_rate_pct
+        smart_sales_rate_pct: kpi.sales > 0 ? (kpi.smart_sales / kpi.sales * 100) : null,
+        connected_rate_pct: kpi.smart_sales > 0 ? (kpi.connected / kpi.smart_sales * 100) : null
       };
     });
   }
@@ -873,6 +1149,7 @@
     updateCachePill();
     setThemeByMetric(state.metric);
     initPeriodFilter();
+    initPeriodUnitFilter();
     renderFilterLists();
     updateState();
     assertRenderGuard();
@@ -906,7 +1183,7 @@
       if (drillStack.length) {
         var prev = drillStack.pop();
         filterRegion = prev.region;
-        filterProductGroup = prev.product_group;
+        setProductFilter(prev.product);
         updateState();
         renderFilterLists();
       }
@@ -914,14 +1191,18 @@
     var btnReset = document.getElementById('btn-reset');
     if (btnReset) btnReset.addEventListener('click', function() {
       filterRegion = null;
-      filterProductGroup = null;
+      setProductFilter({ level1: null, level2: null, level3: null });
       drillStack = [];
       filterPeriodStart = MONTHS[0];
       filterPeriodEnd = MONTHS[MONTHS.length - 1];
+      filterPeriodUnit = PERIOD_UNITS[0].value;
+      selectedLineName = null;
       var startEl = document.getElementById('filter-period-start');
       var endEl = document.getElementById('filter-period-end');
+      var unitEl = document.getElementById('filter-period-unit');
       if (startEl) startEl.value = filterPeriodStart;
       if (endEl) endEl.value = filterPeriodEnd;
+      if (unitEl) unitEl.value = filterPeriodUnit;
       updateState();
       renderFilterLists();
       updateCachePill();

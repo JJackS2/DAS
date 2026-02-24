@@ -45,6 +45,7 @@
           </label>
           <p class="click-hint" aria-label="클릭 모드 안내">Click: Filter · Shift/Double: Drill</p>
           <button type="button" id="btn-drill-mode" class="secondary" aria-pressed="false">Drill-down Mode</button>
+          <span id="data-row-count" class="data-row-count" aria-label="데이터 행 수">Rows: —</span>
         </div>
         <div id="selection" class="selection-right">선택: 글로벌 (전체)</div>
       </div>
@@ -83,6 +84,12 @@
           <span>~</span>
           <select id="filter-period-end" aria-label="종료월"></select>
         </div>
+      </div>
+      <div class="filter-block filter-period-unit">
+        <label for="filter-period-unit">Period Unit</label>
+        <select id="filter-period-unit" aria-label="Period Unit">
+          <option value="month">Month</option>
+        </select>
       </div>
       <div class="filter-block">
         <label>지역</label>
