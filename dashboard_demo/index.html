@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connection Conversion Monitoring (v11)</title>
+  <!-- v11 — ECharts 차트, Pico 기본 테마, 필터 접기/펼치기, 필터 항목·체크리스트 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1.5.11/css/pico.min.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <div id="toast" aria-live="polite"></div>
+  <div id="app">
+    <header id="topbar">
+      <span class="title">Connection Conversion Monitoring (v11)</span>
+      <span class="pill" id="dataset-pill">DATASET v1</span>
+      <span class="pill" id="cache-pill">CACHE —</span>
+      <div class="actions">
+        <button type="button" id="btn-guide" class="secondary">가이드</button>
+        <button type="button" id="btn-back" disabled>Back</button>
+        <button type="button" id="btn-pivot">Pivot</button>
+        <button type="button" id="btn-reset">Reset</button>
+        <button type="button" id="btn-apply">Apply</button>
+      </div>
+    </header>
+    <nav id="left-nav">
+      <a href="#" class="active">Overview</a>
+      <a href="#">Data Quality</a>
+      <a href="#">Advanced</a>
+    </nav>
+    <main id="main">
+      <div id="selection-row" class="selection-row">
+        <div class="selection-row-left">
+          <label class="metric-select-wrap">메트릭
+            <select id="metric-select" aria-label="메트릭 선택">
+              <option value="sales">판매</option>
+              <option value="smart_sales">스마트 판매</option>
+              <option value="connected">연결대수</option>
+              <option value="conn_rate">연결률</option>
+              <option value="smart_conn_rate">스마트 판매 비율</option>
+            </select>
+          </label>
+          <p class="click-hint" aria-label="클릭 모드 안내">Click: Filter · Shift/Double: Drill</p>
+        </div>
+        <div id="selection" class="selection-right">선택: 글로벌 (전체)</div>
+      </div>
+      <p class="global-hint">아무것도 선택하지 않으면 <strong>글로벌</strong> 지표입니다. 우측 필터 또는 차트 클릭으로 지역·제품군을 선택하세요.</p>
+      <div id="kpi-cards">
+        <div class="kpi-card"><span class="kpi-label">판매</span><span class="kpi-value" id="kpi-sales">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">스마트 판매</span><span class="kpi-value" id="kpi-smart-sales">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">연결대수</span><span class="kpi-value" id="kpi-connected">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">스마트 판매 비율</span><span class="kpi-value" id="kpi-smart-sales-rate">—</span></div>
+        <div class="kpi-card"><span class="kpi-label">연결률</span><span class="kpi-value" id="kpi-connected-rate">—</span></div>
+      </div>
+      <div class="chart-section">
+        <h4 class="chart-title">연결률 (시계열)</h4>
+        <div class="chart-container chart-line-wrap" id="line-chart" style="height:220px;"></div>
+      </div>
+      <div id="monitor" class="monitor-two-cols">
+        <div class="chart-section">
+          <h4 class="chart-title" id="chart-title-region">지역별</h4>
+          <div class="chart-container" id="bar-chart-region" style="height:220px;"></div>
+        </div>
+        <div class="chart-section">
+          <h4 class="chart-title" id="chart-title-product">제품군별</h4>
+          <div class="chart-container" id="bar-chart-product" style="height:220px;"></div>
+        </div>
+      </div>
+    </main>
+    <aside id="right-panel">
+      <div class="filter-panel-header">
+        <h3>필터</h3>
+        <button type="button" id="btn-toggle-panel" class="secondary">접기</button>
+      </div>
+      <div class="filter-block filter-period">
+        <label>기간</label>
+        <div class="period-inputs">
+          <select id="filter-period-start" aria-label="시작월"></select>
+          <span>~</span>
+          <select id="filter-period-end" aria-label="종료월"></select>
+        </div>
+      </div>
+      <div class="filter-block">
+        <label>지역</label>
+        <div id="filter-region-list" class="filter-list"></div>
+      </div>
+      <div class="filter-block">
+        <label>제품군</label>
+        <div id="filter-product-list" class="filter-list"></div>
+      </div>
+    </aside>
+  </div>
+  <button type="button" id="btn-expand-filter" class="expand-filter-btn" aria-label="필터 펼치기">필터 펼치기</button>
+
+  <!-- 온보딩 가이드 오버레이 -->
+  <div id="guide-overlay" class="guide-overlay" aria-hidden="true">
+    <div class="guide-card">
+      <div class="guide-progress"><span id="guide-step-num">1</span> / <span id="guide-step-total">4</span></div>
+      <p id="guide-message" class="guide-message">1단계: 우측 필터에서 <strong>지역</strong> 버튼을 클릭해 보세요.</p>
+      <div class="guide-actions">
+        <button type="button" id="guide-skip">건너뛰기</button>
+        <button type="button" id="guide-next">다음</button>
+      </div>
+    </div>
+    <div id="guide-spotlight" class="guide-spotlight"></div>
+  </div>
+
+  <div id="pivot-overlay" aria-hidden="true">
+    <div id="pivot-drawer">
+      <div class="header">
+        <span>Pivot 테이블</span>
+        <button type="button" id="btn-pivot-close">닫기</button>
+      </div>
+      <div class="body">
+        <table id="pivot-table">
+          <thead><tr><th>차원</th><th class="numeric" data-sort="sales">판매</th><th class="numeric" data-sort="smart_sales">스마트 판매</th><th class="numeric" data-sort="connected">연결대수</th><th class="numeric" data-sort="smart_sales_rate_pct">스마트 판매 비율(%)</th><th class="numeric" data-sort="connected_rate_pct">연결률(%)</th></tr></thead>
+          <tbody></tbody>
+          <tfoot><tr><td>합계</td><td class="numeric" id="pivot-total-sales">0</td><td class="numeric" id="pivot-total-smart-sales">0</td><td class="numeric" id="pivot-total-connected">0</td><td class="numeric" id="pivot-total-smart-rate">—</td><td class="numeric" id="pivot-total-connected-rate">—</td></tr></tfoot>
+        </table>
+        <p id="pivot-no-others">No Others</p>
+        <div id="pivot-paging"></div>
+        <div id="self-check-panel">
+          <h4>Self-check</h4>
+          <button type="button" id="btn-self-check">체크 실행</button>
+          <div id="self-check-results"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+<!-- v11 — ECharts 5.4.3, Pico 1.5.11. 필터 접기/펼치기, 필터 항목 체크리스트. TECH_STACK.md §4 체크리스트 검증. -->
