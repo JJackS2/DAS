@@ -74,6 +74,7 @@
   var chartBarRegion = null;
   var chartBarProduct = null;
   var drillIntent = false;
+  var drillDownMode = false;
   var guideStep = 0;
   var GUIDE_STEPS = 4;
 
@@ -250,32 +251,54 @@
     if (!dom || typeof echarts === 'undefined') return;
     if (!chartLine) chartLine = echarts.init(dom);
     var list = getFilteredData();
-    var byMonth = {};
-    list.forEach(function(r) {
-      if (!byMonth[r.year_month]) byMonth[r.year_month] = [];
-      byMonth[r.year_month].push(r);
+    var months = MONTHS.filter(function(ym) {
+      return (!filterPeriodStart || ym >= filterPeriodStart) && (!filterPeriodEnd || ym <= filterPeriodEnd);
     });
-    var months = Object.keys(byMonth).sort();
-    var values = months.map(function(ym) {
-      var k = getKPI(byMonth[ym]);
-      return k.connected_rate_pct != null ? k.connected_rate_pct : 0;
-    });
-    var dataMin = values.length ? Math.min.apply(null, values) : 0;
-    var dataMax = values.length ? Math.max.apply(null, values) : 100;
-    var pad = Math.max(8, (dataMax - dataMin) * 0.15 || 8);
-    var yMin = Math.max(0, dataMin - pad);
-    var yMax = Math.min(100, dataMax + pad);
-    chartLine.setOption({
-      grid: { left: 52, right: 28, top: 28, bottom: 36 },
-      xAxis: { type: 'category', data: months, name: '월', axisLabel: { rotate: 0 } },
-      yAxis: {
-        type: 'value',
-        name: '연결률 (%)',
-        min: yMin,
-        max: yMax,
-        axisLabel: { formatter: function(v) { return Number(v).toFixed(1) + '%'; } }
-      },
-      series: [{
+    var series = [];
+
+    if (drillDownMode) {
+      var keyField = filterRegion ? 'entity' : 'region';
+      var labelMap = filterRegion ? ENTITY_LABELS : REGION_LABELS;
+      var byKey = {};
+      list.forEach(function(r) {
+        var key = r[keyField];
+        if (!key) return;
+        if (!byKey[key]) byKey[key] = {};
+        if (!byKey[key][r.year_month]) byKey[key][r.year_month] = [];
+        byKey[key][r.year_month].push(r);
+      });
+
+      var keys = Object.keys(byKey).sort();
+      series = keys.map(function(key) {
+        var values = months.map(function(ym) {
+          var rows = byKey[key][ym] || [];
+          if (!rows.length) return null;
+          var k = getKPI(rows);
+          return k.connected_rate_pct != null ? (Math.round(k.connected_rate_pct * 10) / 10) : null;
+        });
+        return {
+          name: labelMap[key] || key,
+          type: 'line',
+          data: values,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          connectNulls: false,
+          lineStyle: { width: 2 }
+        };
+      });
+    } else {
+      var byMonth = {};
+      list.forEach(function(r) {
+        if (!byMonth[r.year_month]) byMonth[r.year_month] = [];
+        byMonth[r.year_month].push(r);
+      });
+      var values = months.map(function(ym) {
+        var k = getKPI(byMonth[ym] || []);
+        return k.connected_rate_pct != null ? k.connected_rate_pct : null;
+      });
+      series = [{
+        name: '연결률',
         type: 'line',
         data: values,
         smooth: true,
@@ -288,7 +311,45 @@
           position: 'top',
           formatter: function(params) { return params.value != null ? params.value.toFixed(1) + '%' : ''; }
         }
-      }]
+      }];
+    }
+
+    var allValues = [];
+    series.forEach(function(s) {
+      (s.data || []).forEach(function(v) {
+        if (v == null || isNaN(v)) return;
+        allValues.push(Number(v));
+      });
+    });
+    var dataMin = allValues.length ? Math.min.apply(null, allValues) : 0;
+    var dataMax = allValues.length ? Math.max.apply(null, allValues) : 100;
+    var pad = Math.max(8, (dataMax - dataMin) * 0.15 || 8);
+    var yMin = Math.max(0, dataMin - pad);
+    var yMax = Math.min(100, dataMax + pad);
+    chartLine.setOption({
+      grid: { left: 52, right: 28, top: 28, bottom: 36 },
+      tooltip: {
+        trigger: 'axis',
+        valueFormatter: function(v) { return v == null ? '—' : Number(v).toFixed(1) + '%'; }
+      },
+      legend: drillDownMode ? {
+        type: 'scroll',
+        top: 2,
+        left: 52,
+        right: 28,
+        itemWidth: 10,
+        itemHeight: 6,
+        textStyle: { fontSize: 11 }
+      } : { show: false },
+      xAxis: { type: 'category', data: months, name: '월', axisLabel: { rotate: 0 } },
+      yAxis: {
+        type: 'value',
+        name: '연결률 (%)',
+        min: yMin,
+        max: yMax,
+        axisLabel: { formatter: function(v) { return Number(v).toFixed(1) + '%'; } }
+      },
+      series: series
     }, true);
   }
 
@@ -462,10 +523,18 @@
     });
   }
 
+  function updateDrillModeButton() {
+    var btn = document.getElementById('btn-drill-mode');
+    if (!btn) return;
+    btn.classList.toggle('active', drillDownMode);
+    btn.setAttribute('aria-pressed', drillDownMode ? 'true' : 'false');
+  }
+
   function updateState() {
     setThemeByMetric(state.metric);
     updateSelection();
     updateKPI();
+    updateDrillModeButton();
     renderLineChart();
     renderBarChartRegion();
     renderBarChartProduct();
@@ -777,6 +846,11 @@
     if (btnSelfCheck) btnSelfCheck.addEventListener('click', runSelfCheck);
     var btnGuide = document.getElementById('btn-guide');
     if (btnGuide) btnGuide.addEventListener('click', function() { showGuide(1); });
+    var btnDrillMode = document.getElementById('btn-drill-mode');
+    if (btnDrillMode) btnDrillMode.addEventListener('click', function() {
+      drillDownMode = !drillDownMode;
+      updateState();
+    });
     document.getElementById('guide-skip') && document.getElementById('guide-skip').addEventListener('click', function() { showGuide(0); });
     document.getElementById('guide-next') && document.getElementById('guide-next').addEventListener('click', function() {
       if (guideStep >= GUIDE_STEPS) { showGuide(0); return; }
