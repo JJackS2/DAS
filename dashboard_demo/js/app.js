@@ -614,6 +614,32 @@
     }
   }
 
+  function parseZIndexValue(v) {
+    var n = Number(v);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function hasMultiButtonsPerRow(container) {
+    if (!container) return false;
+    var buttons = Array.prototype.slice.call(container.querySelectorAll('button'));
+    if (buttons.length < 2) return false;
+    var rows = {};
+    buttons.forEach(function(btn) {
+      var rect = btn.getBoundingClientRect();
+      var key = Math.round(rect.top);
+      rows[key] = (rows[key] || 0) + 1;
+    });
+    return Object.keys(rows).some(function(k) { return rows[k] >= 2; });
+  }
+
+  function hasConsistentHeights(buttons) {
+    if (!buttons || !buttons.length) return true;
+    var heights = buttons.map(function(btn) { return Math.round(btn.getBoundingClientRect().height); });
+    var minH = Math.min.apply(null, heights);
+    var maxH = Math.max.apply(null, heights);
+    return (maxH - minH) <= 1;
+  }
+
   function runSelfCheck() {
     var doc = document.documentElement;
     var topbar = document.getElementById('topbar');
@@ -621,10 +647,23 @@
     var right = document.getElementById('right-panel');
     var regionList = document.getElementById('filter-region-list');
     var productList = document.getElementById('filter-product-list');
+    var leftSidebar = document.getElementById('left-sidebar');
+    var leftSidebarTitle = document.querySelector('#left-sidebar .left-sidebar-title');
+    var leftNav = document.getElementById('left-nav');
     var kpiSalesEl = document.getElementById('kpi-sales');
     var pivotSalesEl = document.getElementById('pivot-total-sales');
     var kpiSales = kpiSalesEl ? (kpiSalesEl.textContent.replace(/,/g, '')) : '';
     var pivotSales = pivotSalesEl ? (pivotSalesEl.textContent.replace(/,/g, '')) : '';
+    var topbarActions = document.querySelector('#topbar .actions');
+    var topbarButtons = topbarActions ? Array.prototype.slice.call(topbarActions.querySelectorAll('button')) : [];
+    var leftNavLinks = leftNav ? Array.prototype.slice.call(leftNav.querySelectorAll('a')) : [];
+    var guideNext = document.getElementById('guide-next');
+    var guideOverlay = document.getElementById('guide-overlay');
+    var guideCard = document.querySelector('#guide-overlay .guide-card');
+    var guideSpotlight = document.getElementById('guide-spotlight');
+    var drillModeBtn = document.getElementById('btn-drill-mode');
+    var lineOption = chartLine && chartLine.getOption ? chartLine.getOption() : null;
+    var seriesLen = lineOption && lineOption.series ? lineOption.series.length : 0;
 
     var items = [];
     items.push({ name: 'L1 가로 오버플로우', pass: doc.scrollWidth <= doc.clientWidth + 1, detail: 'scrollWidth=' + doc.scrollWidth + ' clientWidth=' + doc.clientWidth });
@@ -642,6 +681,79 @@
     items.push({ name: '필터 제품군 항목 존재', pass: productCount >= 1, detail: '제품군 항목 수=' + productCount });
     items.push({ name: 'KPI 값이 — 가 아님', pass: kpiSales !== '—' && kpiSales !== '', detail: 'kpi-sales=' + kpiSales });
     items.push({ name: 'KPI vs Pivot 합계 일치', pass: String(kpiSales) === String(pivotSales), detail: 'KPI sales=' + kpiSales + ', Pivot sales=' + pivotSales });
+
+    var leftMenuOk = !!leftSidebar && !!leftSidebarTitle && !!leftNav && leftNavLinks.length >= 1;
+    items.push({ name: '좌측 사이드바 구조(타이틀/메뉴) 존재', pass: leftMenuOk, detail: 'title=' + !!leftSidebarTitle + ' links=' + leftNavLinks.length });
+    var leftNavNoClip = leftNavLinks.length ? leftNavLinks.every(function(link) { return link.scrollWidth <= link.clientWidth + 1; }) : false;
+    items.push({ name: '좌측 메뉴 텍스트 클리핑 없음', pass: leftNavNoClip, detail: 'links=' + leftNavLinks.length });
+
+    var navLabels = leftNavLinks.map(function(a) { return (a.textContent || '').trim().toLowerCase(); });
+    var topbarBtnLabels = topbarButtons.map(function(b) { return (b.textContent || '').trim().toLowerCase(); });
+    var duplicateTopNav = topbarBtnLabels.filter(function(lbl) { return navLabels.indexOf(lbl) >= 0; });
+    items.push({ name: '탑바-좌측메뉴 중복 네비 버튼 없음', pass: duplicateTopNav.length === 0, detail: 'duplicates=' + duplicateTopNav.join(',') });
+
+    var guideBtn = document.getElementById('btn-guide');
+    var keyboardBtn = document.getElementById('btn-keyboard');
+    if (guideBtn && topbar) {
+      var gRect = guideBtn.getBoundingClientRect();
+      var tRect = topbar.getBoundingClientRect();
+      var guideFit = guideBtn.scrollWidth <= guideBtn.clientWidth + 1;
+      var guideHeightOk = gRect.height <= tRect.height + 1;
+      items.push({ name: 'Guide 버튼 오버플로우/높이 정상', pass: guideFit && guideHeightOk, detail: 'fit=' + guideFit + ' h=' + Math.round(gRect.height) + '/' + Math.round(tRect.height) });
+    } else {
+      items.push({ name: 'Guide 버튼 오버플로우/높이 정상', pass: false, detail: 'guide/topbar 없음' });
+    }
+    if (keyboardBtn && topbar) {
+      var kRect = keyboardBtn.getBoundingClientRect();
+      var ttRect = topbar.getBoundingClientRect();
+      var keyboardFit = keyboardBtn.scrollWidth <= keyboardBtn.clientWidth + 1;
+      var keyboardHeightOk = kRect.height <= ttRect.height + 1;
+      items.push({ name: 'Keyboard 버튼 오버플로우/높이 정상', pass: keyboardFit && keyboardHeightOk, detail: 'fit=' + keyboardFit + ' h=' + Math.round(kRect.height) + '/' + Math.round(ttRect.height) });
+    } else {
+      items.push({ name: 'Keyboard 버튼 오버플로우/높이 정상', pass: true, detail: '버튼 미사용(N/A)' });
+    }
+
+    if (guideNext && guideOverlay && guideCard && guideSpotlight) {
+      var overlayZ = parseZIndexValue(window.getComputedStyle(guideOverlay).zIndex);
+      var cardZ = parseZIndexValue(window.getComputedStyle(guideCard).zIndex);
+      var spotlightZ = parseZIndexValue(window.getComputedStyle(guideSpotlight).zIndex);
+      var nextZ = parseZIndexValue(window.getComputedStyle(guideNext).zIndex);
+      var nextInteractive = window.getComputedStyle(guideNext).pointerEvents !== 'none';
+      var zOk = nextZ > cardZ && cardZ > spotlightZ && spotlightZ >= overlayZ;
+      items.push({ name: 'Guide Next 버튼 z-index/상호작용 정상', pass: zOk && nextInteractive, detail: 'z=' + overlayZ + '/' + spotlightZ + '/' + cardZ + '/' + nextZ + ' interactive=' + nextInteractive });
+    } else {
+      items.push({ name: 'Guide Next 버튼 z-index/상호작용 정상', pass: false, detail: '가이드 DOM 없음' });
+    }
+
+    var rightCollapsedNow = right && right.classList.contains('collapsed');
+    var regionWrap = regionList ? window.getComputedStyle(regionList).flexWrap === 'wrap' : false;
+    var productWrap = productList ? window.getComputedStyle(productList).flexWrap === 'wrap' : false;
+    items.push({ name: '필터 버튼 래핑(flex-wrap) 활성화', pass: rightCollapsedNow ? true : (regionWrap && productWrap), detail: rightCollapsedNow ? '패널 접힘(N/A)' : ('region=' + regionWrap + ' product=' + productWrap) });
+
+    var regionGap = regionList ? parseFloat(window.getComputedStyle(regionList).gap || '0') : 0;
+    var productGap = productList ? parseFloat(window.getComputedStyle(productList).gap || '0') : 0;
+    var compactGap = rightCollapsedNow ? true : (regionGap <= 4 && productGap <= 4);
+    items.push({ name: '필터 버튼 간격(고밀도) 정상', pass: compactGap, detail: rightCollapsedNow ? '패널 접힘(N/A)' : ('gap=' + regionGap + '/' + productGap) });
+
+    var regionMultiRow = rightCollapsedNow ? true : hasMultiButtonsPerRow(regionList);
+    var productMultiRow = rightCollapsedNow ? true : hasMultiButtonsPerRow(productList);
+    items.push({ name: '필터 다중 버튼 한 행 배치 가능', pass: regionMultiRow && productMultiRow, detail: rightCollapsedNow ? '패널 접힘(N/A)' : ('region=' + regionMultiRow + ' product=' + productMultiRow) });
+
+    var allFilterButtons = [];
+    if (regionList) allFilterButtons = allFilterButtons.concat(Array.prototype.slice.call(regionList.querySelectorAll('button')));
+    if (productList) allFilterButtons = allFilterButtons.concat(Array.prototype.slice.call(productList.querySelectorAll('button')));
+    var uniformFilterH = rightCollapsedNow ? true : hasConsistentHeights(allFilterButtons);
+    items.push({ name: '필터 버튼 높이 일관성 유지', pass: uniformFilterH, detail: rightCollapsedNow ? '패널 접힘(N/A)' : ('count=' + allFilterButtons.length) });
+
+    var drillLabelOk = !!drillModeBtn && (drillModeBtn.textContent || '').trim() === 'Drill-down Mode';
+    items.push({ name: 'Drill-down Mode 토글 존재/라벨 일치', pass: drillLabelOk, detail: 'exists=' + !!drillModeBtn });
+    if (drillModeBtn) {
+      var isOn = drillModeBtn.classList.contains('active');
+      var seriesOk = isOn ? (seriesLen >= 2) : (seriesLen === 1);
+      items.push({ name: 'Drill-down Mode 상태별 라인 수 정상', pass: seriesOk, detail: 'on=' + isOn + ' series=' + seriesLen });
+    } else {
+      items.push({ name: 'Drill-down Mode 상태별 라인 수 정상', pass: false, detail: '토글 버튼 없음' });
+    }
 
     var html = items.map(function(it) {
       var cls = it.pass ? 'pass' : 'fail';
