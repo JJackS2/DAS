@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Demo</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .card {
+      width: min(92vw, 560px);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 24px;
+      background: #111827;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 1.6rem;
+    }
+
+    p {
+      margin: 0 0 18px 0;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    a {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    button {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    a {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+    }
+
+    #status {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #93c5fd;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Dashboard Demo</h1>
+    <p>
+      아래 버튼을 누르면 GitHub에서 제공하는 메인 페이지를 새 탭으로 엽니다.
+    </p>
+    <div class="actions">
+      <button id="openGithubBtn" type="button">GitHub 메인 페이지 열기</button>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">직접 링크 열기</a>
+    </div>
+    <div id="status" aria-live="polite"></div>
+  </main>
+
+  <script>
+    const openGithubBtn = document.getElementById("openGithubBtn");
+    const status = document.getElementById("status");
+
+    function openGithubMainPage() {
+      const popup = window.open("https://github.com", "_blank", "noopener,noreferrer");
+      if (popup) {
+        status.textContent = "GitHub 메인 페이지를 열었습니다.";
+      } else {
+        status.textContent = "팝업이 차단되었습니다. 아래 직접 링크를 사용해 주세요.";
+      }
+    }
+
+    openGithubBtn.addEventListener("click", openGithubMainPage);
+  </script>
+</body>
+</html>
