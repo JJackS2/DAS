@@ -78,7 +78,21 @@
             </select>
           </div>
         </div>
-        <div id="treemap-container" class="treemap-container"></div>
+        <div class="treemap-chart-wrap">
+          <div id="treemap-container" class="treemap-container"></div>
+          <p class="treemap-hint" aria-hidden="true">마우스 휠로 확대/축소, 드래그로 이동</p>
+          <div id="treemap-legend" class="treemap-legend" aria-label="색상 스케일">
+            <div class="treemap-legend-title"></div>
+            <div class="treemap-legend-bar-wrap">
+              <span class="treemap-legend-label treemap-legend-min">0%</span>
+              <div class="treemap-legend-bar"></div>
+              <span class="treemap-legend-label treemap-legend-max">100%</span>
+            </div>
+            <div class="treemap-legend-scale">
+              <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
     <aside id="right-column">

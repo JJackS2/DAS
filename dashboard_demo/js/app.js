@@ -260,9 +260,17 @@
     var colorEl = document.getElementById('treemap-color-metric');
     var colorKey = colorEl ? colorEl.value : 'connected_rate_pct';
     var data = buildTreemapHierarchy(list, sizeKey, colorKey);
+    function lerpColor(r1, g1, b1, r2, g2, b2, t) {
+      t = Math.max(0, Math.min(1, t));
+      var r = Math.round(r1 + (r2 - r1) * t);
+      var g = Math.round(g1 + (g2 - g1) * t);
+      var b = Math.round(b1 + (b2 - b1) * t);
+      return '#' + [r, g, b].map(function(x) { return x.toString(16).padStart(2, '0'); }).join('');
+    }
     function mapToEcharts(n) {
       var rate = n.rate != null ? n.rate : 50;
-      var color = rate >= 75 ? '#0d9488' : rate >= 50 ? '#2dd4bf' : rate >= 25 ? '#5eead4' : '#99f6e4';
+      var t = rate / 100;
+      var color = lerpColor(220, 38, 38, 22, 163, 74, t);
       var item = { name: n.name, value: n.value, rate: n.rate };
       item.itemStyle = { color: color };
       if (n.children && n.children.length) item.children = n.children.map(mapToEcharts);
@@ -270,26 +278,76 @@
     }
     var treeData = data.map(mapToEcharts);
     var colorLabel = colorKey === 'connected_rate_pct' ? '연결률' : '스마트 판매 비율';
+    var legendEl = document.getElementById('treemap-legend');
+    if (legendEl) {
+      var title = legendEl.querySelector('.treemap-legend-title');
+      if (title) title.textContent = colorLabel;
+      var minL = legendEl.querySelector('.treemap-legend-min');
+      if (minL) minL.textContent = '0%';
+      var maxL = legendEl.querySelector('.treemap-legend-max');
+      if (maxL) maxL.textContent = '100%';
+    }
     chartTreemap.setOption({
       tooltip: {
+        backgroundColor: 'rgba(30,41,59,0.95)',
+        borderColor: '#475569',
+        borderWidth: 1,
+        textStyle: { color: '#f1f5f9', fontSize: 12 },
         formatter: function(info) {
           if (!info || !info.data) return '';
           var n = info.data;
-          var rate = n.rate != null ? n.rate.toFixed(1) + '%' : '—';
-          return (info.name || '') + '<br/>크기: ' + fmtNum(n.value) + '<br/>' + colorLabel + ': ' + rate;
+          var rateVal = n.rate != null ? n.rate : null;
+          var rateStr = rateVal != null ? rateVal.toFixed(1) + '%' : '—';
+          var rateColor = rateVal != null ? (rateVal >= 50 ? '#22c55e' : '#dc2626') : '#94a3b8';
+          return '<div style="font-weight:600;margin-bottom:6px">' + (info.name || '') + '</div>' +
+            '크기: ' + fmtNum(n.value) + '<br/>' +
+            '<span style="font-weight:700;color:' + rateColor + '">' + colorLabel + ': ' + rateStr + '</span>';
         }
       },
       series: [{
         type: 'treemap',
         data: treeData,
-        roam: false,
+        roam: true,
         nodeClick: 'zoomToNode',
         breadcrumb: { show: true },
-        label: { show: true, formatter: function(params) { if (!params || !params.rect) return ''; if (params.rect.height < 24 || params.rect.width < 60) return ''; return (params.name || '') + (params.data && params.data.rate != null ? ' ' + params.data.rate + '%' : ''); } },
-        upperLabel: { show: false },
+        label: {
+          show: true,
+          fontSize: 11,
+          color: '#fff',
+          rich: {
+            rateHigh: { color: '#22c55e', fontSize: 10 },
+            rateLow: { color: '#f87171', fontSize: 10 }
+          },
+          formatter: function(params) {
+            if (!params || !params.rect) return '';
+            var r = params.rect;
+            if (r.height < 26 || r.width < 64) return '';
+            var rate = params.data && params.data.rate != null ? params.data.rate : null;
+            if (rate == null) return params.name || '';
+            var tag = rate >= 50 ? 'rateHigh' : 'rateLow';
+            return (params.name || '') + '\n{' + tag + '|' + rate + '%}';
+          }
+        },
+        upperLabel: {
+          show: true,
+          height: 28,
+          color: '#fff',
+          fontWeight: 'bold',
+          backgroundColor: '#374151',
+          padding: [4, 8],
+          formatter: function(params) {
+            if (!params || !params.name || !params.rect) return '';
+            var r = params.rect;
+            if (r.height < 28 || r.width < 72) return '';
+            return params.name;
+          }
+        },
         levels: [
-          { itemStyle: { borderWidth: 2, borderColor: '#fff' } },
-          { itemStyle: { borderWidth: 1, borderColor: '#f0f0f0' } }
+          { itemStyle: { borderWidth: 2, borderColor: '#fff' }, upperLabel: { show: true, fontSize: 18, color: '#fff', fontWeight: 'bold', backgroundColor: '#374151', padding: [4, 8] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' }, upperLabel: { show: true, fontSize: 14, color: '#fff', fontWeight: 'bold', backgroundColor: '#4b5563', padding: [4, 8] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }, upperLabel: { show: true, fontSize: 12, color: '#fff', backgroundColor: '#4b5563', padding: [2, 6] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }, upperLabel: { show: true, fontSize: 11, color: '#fff', backgroundColor: '#4b5563', padding: [2, 6] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }, upperLabel: { show: false } }
         ]
       }]
     }, true);
