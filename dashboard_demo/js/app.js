@@ -255,10 +255,10 @@
     if (!dom || typeof echarts === 'undefined') return;
     if (!chartTreemap) chartTreemap = echarts.init(dom);
     var list = getFilteredData();
-    var sizeKey = document.getElementById('treemap-size-metric');
-    sizeKey = sizeKey ? sizeKey.value : 'sales';
-    var colorKey = document.getElementById('treemap-color-metric');
-    colorKey = colorKey ? colorKey.value : 'connected_rate_pct';
+    var sizeEl = document.getElementById('treemap-size-metric');
+    var sizeKey = sizeEl ? sizeEl.value : 'sales';
+    var colorEl = document.getElementById('treemap-color-metric');
+    var colorKey = colorEl ? colorEl.value : 'connected_rate_pct';
     var data = buildTreemapHierarchy(list, sizeKey, colorKey);
     function mapToEcharts(n) {
       var rate = n.rate != null ? n.rate : 50;
@@ -269,12 +269,14 @@
       return item;
     }
     var treeData = data.map(mapToEcharts);
+    var colorLabel = colorKey === 'connected_rate_pct' ? '연결률' : '스마트 판매 비율';
     chartTreemap.setOption({
       tooltip: {
         formatter: function(info) {
+          if (!info || !info.data) return '';
           var n = info.data;
           var rate = n.rate != null ? n.rate.toFixed(1) + '%' : '—';
-          return (info.name || '') + '<br/>크기: ' + fmtNum(n.value) + '<br/>' + (colorKey === 'connected_rate_pct' ? '연결률' : '스마트 판매 비율') + ': ' + rate;
+          return (info.name || '') + '<br/>크기: ' + fmtNum(n.value) + '<br/>' + colorLabel + ': ' + rate;
         }
       },
       series: [{
@@ -283,7 +285,7 @@
         roam: false,
         nodeClick: 'zoomToNode',
         breadcrumb: { show: true },
-        label: { show: true, formatter: function(params) { if (params.rect.height < 24 || params.rect.width < 60) return ''; return params.name + (params.data.rate != null ? ' ' + params.data.rate + '%' : ''); } },
+        label: { show: true, formatter: function(params) { if (!params || !params.rect) return ''; if (params.rect.height < 24 || params.rect.width < 60) return ''; return (params.name || '') + (params.data && params.data.rate != null ? ' ' + params.data.rate + '%' : ''); } },
         upperLabel: { show: false },
         levels: [
           { itemStyle: { borderWidth: 2, borderColor: '#fff' } },
@@ -291,6 +293,7 @@
         ]
       }]
     }, true);
+    if (chartTreemap) chartTreemap.resize();
   }
 
   function switchView(view) {
@@ -300,10 +303,21 @@
     if (overview) overview.style.display = view === 'overview' ? 'flex' : 'none';
     if (advanced) advanced.style.display = view === 'advanced' ? 'flex' : 'none';
     if (view === 'advanced') {
-      setTimeout(function() {
-        renderTreemap();
-        if (chartTreemap) chartTreemap.resize();
-      }, 50);
+      var renderAttempts = 0;
+      function doRender() {
+        renderAttempts++;
+        var container = document.getElementById('treemap-container');
+        if (container && (container.offsetParent !== null || renderAttempts > 15)) {
+          var w = container.clientWidth || container.offsetWidth;
+          var h = container.clientHeight || container.offsetHeight;
+          if (w > 0 && h > 0 || renderAttempts > 15) {
+            renderTreemap();
+            return;
+          }
+        }
+        if (renderAttempts <= 20) requestAnimationFrame(doRender);
+      }
+      requestAnimationFrame(function() { requestAnimationFrame(doRender); });
     }
   }
 
