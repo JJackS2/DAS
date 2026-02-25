@@ -22,6 +22,10 @@
   var REGION_LABELS = { NAM: '북미', SAM: '남미', WEU: '서유럽', EEU: '동유럽', NEU: '북유럽', SEU: '남유럽', EAS: '동아시아', SEA: '동남아', SAS: '남아시아', WAS: '서아시아', NAF: '북아프리카', SAF: '남아프리카' };
   var REGIONS_ENTITIES = { NAM: ['E1', 'E2'], SAM: ['E1', 'E2'], WEU: ['E1', 'E2'], EEU: ['E1', 'E2'], NEU: ['E1', 'E2'], SEU: ['E1', 'E2'], EAS: ['E1', 'E2'], SEA: ['E1', 'E2'], SAS: ['E1', 'E2'], WAS: ['E1', 'E2'], NAF: ['E1', 'E2'], SAF: ['E1', 'E2'] };
   var ENTITY_LABELS = { E1: '법인1', E2: '법인2' };
+  /** 지역별 규모 다양성: 합산값이 지역마다 크게 차나도록 (0.3 ~ 2.5) */
+  var REGION_SCALE = { NAM: 2.2, SAM: 0.5, WEU: 1.4, EEU: 0.7, NEU: 0.9, SEU: 0.6, EAS: 2.5, SEA: 1.1, SAS: 0.8, WAS: 0.4, NAF: 0.35, SAF: 0.3 };
+  /** 법인별 규모 다양성: 같은 지역 내에서도 법인마다 차이 (0.5 ~ 1.8) */
+  var ENTITY_SCALE = { E1: 1.6, E2: 0.5 };
   var MONTHS = ['2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06', '2024-07'];
   var PERIOD_UNITS = [{ value: 'month', label: 'Month' }];
 
@@ -91,7 +95,10 @@
             for (var pi = 0; pi < PRODUCT_LEAF_NODES.length; pi++) {
               var leaf = PRODUCT_LEAF_NODES[pi];
               seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-              var sales = 600 + (seed % 1800);
+              var baseSales = 600 + (seed % 1800);
+              var regionScale = REGION_SCALE[region] != null ? REGION_SCALE[region] : 1;
+              var entityScale = ENTITY_SCALE[entity] != null ? ENTITY_SCALE[entity] : 1;
+              var sales = Math.max(1, Math.round(baseSales * regionScale * entityScale));
               var smartRatio = 0.68 + (seed % 20) / 100;
               var connRatio = 0.65 + (seed % 25) / 100;
               var smart_sales = Math.round(sales * smartRatio);
@@ -163,6 +170,14 @@
     if (n == null || isNaN(n)) return '—';
     return Number(n).toLocaleString();
   }
+  function fmtCompact(n) {
+    if (n == null || isNaN(n)) return '—';
+    var v = Number(n);
+    if (v >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'G';
+    if (v >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (v >= 1e3) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
+    return String(Math.round(v));
+  }
   function fmtPct(n) {
     if (n == null || isNaN(n)) return '—';
     return Number(n).toFixed(1) + '%';
@@ -193,23 +208,25 @@
     }
   }
 
-  /** Treemap: 계층 집계 (지역→법인→국가→제품L1→L2→L3). 크기=sizeMetric 합, 색상=rate 가중평균(weight=size). */
-  function buildTreemapHierarchy(list, sizeKey, colorKey) {
+  /** Treemap: 축에 따라 지역만(글로벌>지역>법인) 또는 제품군만(글로벌>제품L1>L2>L3). */
+  function buildTreemapHierarchy(list, sizeKey, colorKey, axis) {
     var maps = getRegionLabelMaps();
     function getRegionLabel(key, level) {
       if (key === '(Unknown)' || !key) return '(Unknown)';
       if (level === 0) return (maps.region && maps.region[key]) || key;
       if (level === 1) return (maps.corporation && maps.corporation[key]) || key;
-      if (level === 2) return (maps.country && maps.country[key]) || key;
       return key;
     }
     function rowRate(r) {
       if (colorKey === 'connected_rate_pct') return r.smart_sales > 0 ? (r.connected / r.smart_sales * 100) : null;
       return r.sales > 0 ? (r.smart_sales / r.sales * 100) : null;
     }
+    var depthKeys = axis === 'product'
+      ? ['product_level1', 'product_level2', 'product_level3']
+      : ['region', 'entity', 'product_level1'];
+    var lastLevel = depthKeys.length - 1;
     function aggregate(rows, level) {
-      var depth = ['region', 'entity', 'country', 'product_level1', 'product_level2', 'product_level3'];
-      var keyField = depth[level];
+      var keyField = depthKeys[level];
       var groups = {};
       for (var i = 0; i < rows.length; i++) {
         var r = rows[i];
@@ -223,31 +240,76 @@
         var key = keys[ki];
         var sub = groups[key];
         var sumVal = 0, sumRateW = 0;
+        var sumSales = 0, sumSmart = 0, sumConnected = 0;
+        var rateConnW = 0, rateSmartW = 0;
         for (var si = 0; si < sub.length; si++) {
-          var v = sub[si][sizeKey] || 0;
+          var r = sub[si];
+          var v = r[sizeKey] || 0;
           sumVal += v;
-          var rate = rowRate(sub[si]);
+          var rate = rowRate(r);
           if (rate != null && !isNaN(rate)) sumRateW += rate * v;
+          sumSales += r.sales || 0;
+          sumSmart += r.smart_sales || 0;
+          sumConnected += r.connected || 0;
+          if (r.smart_sales > 0) rateConnW += (r.connected / r.smart_sales * 100) * r.smart_sales;
+          if (r.sales > 0) rateSmartW += (r.smart_sales / r.sales * 100) * r.sales;
         }
         var rateAvg = sumVal > 0 ? sumRateW / sumVal : null;
-        var label = level <= 2 ? getRegionLabel(key, level) : key;
-        var node = { name: label, value: Math.round(sumVal), rate: rateAvg != null ? Math.round(rateAvg * 10) / 10 : null };
-        if (level < 5) node.children = aggregate(sub, level + 1);
+        var rateConn = sumSmart > 0 ? rateConnW / sumSmart : null;
+        var rateSmart = sumSales > 0 ? rateSmartW / sumSales : null;
+        var label = axis === 'region' && level <= 1 ? getRegionLabel(key, level) : key;
+        var node = {
+          name: label,
+          value: Math.max(1, Math.round(sumVal)),
+          rate: rateAvg != null ? Math.round(rateAvg * 10) / 10 : null,
+          salesSum: Math.round(sumSales),
+          smartSalesSum: Math.round(sumSmart),
+          connectedSum: Math.round(sumConnected),
+          rateConnected: rateConn != null ? Math.round(rateConn * 10) / 10 : null,
+          rateSmart: rateSmart != null ? Math.round(rateSmart * 10) / 10 : null
+        };
+        if (axis === 'region' && level === 1) node.isCorporation = true;
+        if (axis === 'region' && level === 2) node.isProductL1 = true;
+        if (level < lastLevel) {
+          node.children = aggregate(sub, level + 1);
+          var childSum = 0;
+          for (var ci = 0; ci < node.children.length; ci++) childSum += node.children[ci].value;
+          node.value = Math.max(1, childSum);
+        }
         children.push(node);
       }
       return children;
     }
-    if (!list.length) return [{ name: 'Global', value: 0, rate: null, children: [] }];
+    if (!list.length) return [{ name: 'Global', value: 0, rate: null, salesSum: 0, smartSalesSum: 0, connectedSum: 0, rateConnected: null, rateSmart: null, children: [] }];
     var children = aggregate(list, 0);
-    var totalVal = 0, totalRateW = 0;
+    var totalVal = 0, totalRateW = 0, tSales = 0, tSmart = 0, tConn = 0, tRateConnW = 0, tRateSmartW = 0;
     list.forEach(function(r) {
       var v = r[sizeKey] || 0;
       totalVal += v;
       var rate = rowRate(r);
       if (rate != null && !isNaN(rate)) totalRateW += rate * v;
+      tSales += r.sales || 0;
+      tSmart += r.smart_sales || 0;
+      tConn += r.connected || 0;
+      if (r.smart_sales > 0) tRateConnW += (r.connected / r.smart_sales * 100) * r.smart_sales;
+      if (r.sales > 0) tRateSmartW += (r.smart_sales / r.sales * 100) * r.sales;
     });
     var rootRate = totalVal > 0 ? totalRateW / totalVal : null;
-    return [{ name: 'Global', value: Math.round(totalVal), rate: rootRate != null ? Math.round(rootRate * 10) / 10 : null, children: children }];
+    var rootRateConn = tSmart > 0 ? tRateConnW / tSmart : null;
+    var rootRateSmart = tSales > 0 ? tRateSmartW / tSales : null;
+    var rootChildSum = 0;
+    for (var ri = 0; ri < children.length; ri++) rootChildSum += children[ri].value;
+    return [{
+      name: 'Global',
+      value: Math.max(1, rootChildSum),
+      rate: rootRate != null ? Math.round(rootRate * 10) / 10 : null,
+      salesSum: Math.round(tSales),
+      smartSalesSum: Math.round(tSmart),
+      connectedSum: Math.round(tConn),
+      rateConnected: rootRateConn != null ? Math.round(rootRateConn * 10) / 10 : null,
+      rateSmart: rootRateSmart != null ? Math.round(rootRateSmart * 10) / 10 : null,
+      children: children
+    }];
   }
 
   function renderTreemap() {
@@ -255,11 +317,15 @@
     if (!dom || typeof echarts === 'undefined') return;
     if (!chartTreemap) chartTreemap = echarts.init(dom);
     var list = getFilteredData();
-    var sizeEl = document.getElementById('treemap-size-metric');
-    var sizeKey = sizeEl ? sizeEl.value : 'sales';
+    var metricEl = document.getElementById('treemap-metric');
+    var metricKey = metricEl ? metricEl.value : 'sales';
+    var sizeKey = (metricKey === 'connected_rate_pct') ? 'connected' : (metricKey === 'smart_sales_rate_pct') ? 'smart_sales' : metricKey;
     var colorEl = document.getElementById('treemap-color-metric');
     var colorKey = colorEl ? colorEl.value : 'connected_rate_pct';
-    var data = buildTreemapHierarchy(list, sizeKey, colorKey);
+    var axisRegion = document.getElementById('treemap-axis-region');
+    var axisProduct = document.getElementById('treemap-axis-product');
+    var axis = (axisRegion && axisRegion.classList.contains('active')) ? 'region' : 'product';
+    var data = buildTreemapHierarchy(list, sizeKey, colorKey, axis);
     function lerpColor(r1, g1, b1, r2, g2, b2, t) {
       t = Math.max(0, Math.min(1, t));
       var r = Math.round(r1 + (r2 - r1) * t);
@@ -271,13 +337,67 @@
       var rate = n.rate != null ? n.rate : 50;
       var t = rate / 100;
       var color = lerpColor(220, 38, 38, 22, 163, 74, t);
-      var item = { name: n.name, value: n.value, rate: n.rate };
+      var item = {
+        name: n.name,
+        value: n.value,
+        rate: n.rate,
+        salesSum: n.salesSum,
+        smartSalesSum: n.smartSalesSum,
+        connectedSum: n.connectedSum,
+        rateConnected: n.rateConnected,
+        rateSmart: n.rateSmart
+      };
+      if (n.isCorporation) item.isCorporation = true;
       item.itemStyle = { color: color };
       if (n.children && n.children.length) item.children = n.children.map(mapToEcharts);
       return item;
     }
     var treeData = data.map(mapToEcharts);
     var colorLabel = colorKey === 'connected_rate_pct' ? '연결률' : '스마트 판매 비율';
+
+    /** 박스별 폰트: 선호 비율. 조정 시 0.4(작게) ~ 0.6(크게) */
+    var TREEMAP_BOX_FONT_SCALE = 0.55;
+    var TREEMAP_LABEL_PAD = 12;
+    var TREEMAP_FONT_SIZES = [8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28];
+
+    function getBoxDisplayValue(d, mKey) {
+      if (mKey === 'sales' && d.salesSum != null) return fmtCompact(d.salesSum);
+      if (mKey === 'smart_sales' && d.smartSalesSum != null) return fmtCompact(d.smartSalesSum);
+      if (mKey === 'connected' && d.connectedSum != null) return fmtCompact(d.connectedSum);
+      if (mKey === 'connected_rate_pct' && d.rateConnected != null) return d.rateConnected.toFixed(1) + '%';
+      if (mKey === 'smart_sales_rate_pct' && d.rateSmart != null) return d.rateSmart.toFixed(1) + '%';
+      return '—';
+    }
+
+    function computeBoxFontSize(rect, nameLen, numStrLen, fontScale) {
+      var w = rect && rect.width != null ? rect.width : 60;
+      var h = rect && rect.height != null ? rect.height : 40;
+      var minSide = Math.min(w, h);
+      var maxLen = Math.max(nameLen, numStrLen) || 1;
+      var byWidth = (w - TREEMAP_LABEL_PAD) / (maxLen * 0.52);
+      var byHeight = (h - TREEMAP_LABEL_PAD) / (2 * 1.25);
+      var preferred = minSide * fontScale;
+      var fs = Math.min(28, Math.max(8, Math.floor(Math.min(preferred, byWidth, byHeight))));
+      var pick = TREEMAP_FONT_SIZES[0];
+      for (var i = 0; i < TREEMAP_FONT_SIZES.length; i++) {
+        if (TREEMAP_FONT_SIZES[i] <= fs) pick = TREEMAP_FONT_SIZES[i];
+      }
+      return pick;
+    }
+
+    var treemapLabelRich = {};
+    TREEMAP_FONT_SIZES.forEach(function(fs) {
+      treemapLabelRich['_' + fs] = {
+        fontSize: fs,
+        color: '#0f172a',
+        fontWeight: 'bold',
+        textBorderColor: '#fff',
+        textBorderWidth: 1,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        align: 'center',
+        lineHeight: Math.round(fs * 1.25)
+      };
+    });
     var legendEl = document.getElementById('treemap-legend');
     if (legendEl) {
       var title = legendEl.querySelector('.treemap-legend-title');
@@ -299,55 +419,85 @@
           var rateVal = n.rate != null ? n.rate : null;
           var rateStr = rateVal != null ? rateVal.toFixed(1) + '%' : '—';
           var rateColor = rateVal != null ? (rateVal >= 50 ? '#22c55e' : '#dc2626') : '#94a3b8';
+          var sizeStr = sizeKey === 'connected' ? fmtCompact(n.value) : fmtNum(n.value);
+          var numStr = '—';
+          if (metricKey === 'sales' && n.salesSum != null) numStr = fmtCompact(n.salesSum);
+          else if (metricKey === 'smart_sales' && n.smartSalesSum != null) numStr = fmtCompact(n.smartSalesSum);
+          else if (metricKey === 'connected' && n.connectedSum != null) numStr = fmtCompact(n.connectedSum);
+          else if (metricKey === 'connected_rate_pct' && n.rateConnected != null) numStr = n.rateConnected.toFixed(1) + '%';
+          else if (metricKey === 'smart_sales_rate_pct' && n.rateSmart != null) numStr = n.rateSmart.toFixed(1) + '%';
           return '<div style="font-weight:600;margin-bottom:6px">' + (info.name || '') + '</div>' +
-            '크기: ' + fmtNum(n.value) + '<br/>' +
+            '메트릭: ' + numStr + '<br/>' +
+            '면적: ' + sizeStr + '<br/>' +
             '<span style="font-weight:700;color:' + rateColor + '">' + colorLabel + ': ' + rateStr + '</span>';
         }
       },
       series: [{
         type: 'treemap',
+        left: 2,
+        right: 2,
+        top: 2,
+        bottom: 2,
+        width: null,
+        height: null,
         data: treeData,
         roam: true,
         nodeClick: 'zoomToNode',
-        breadcrumb: { show: true },
+        sort: 'desc',
+        breadcrumb: {
+          show: true,
+          itemStyle: { textStyle: { fontSize: 10 } },
+          formatter: function(param) {
+            var name = param.name || '';
+            if (param.data && param.data.isCorporation && param.data.rate != null) name += ' (' + param.data.rate + '%)';
+            return name;
+          }
+        },
         label: {
           show: true,
-          fontSize: 11,
-          color: '#fff',
-          rich: {
-            rateHigh: { color: '#22c55e', fontSize: 10 },
-            rateLow: { color: '#f87171', fontSize: 10 }
-          },
+          position: 'inside',
+          align: 'center',
+          verticalAlign: 'middle',
+          color: '#0f172a',
+          fontWeight: 'bold',
+          textBorderColor: '#fff',
+          textBorderWidth: 1,
+          backgroundColor: 'rgba(255,255,255,0.92)',
+          padding: [6, 8],
+          overflow: 'none',
           formatter: function(params) {
-            if (!params || !params.rect) return '';
-            var r = params.rect;
-            if (r.height < 26 || r.width < 64) return '';
-            var rate = params.data && params.data.rate != null ? params.data.rate : null;
-            if (rate == null) return params.name || '';
-            var tag = rate >= 50 ? 'rateHigh' : 'rateLow';
-            return (params.name || '') + '\n{' + tag + '|' + rate + '%}';
-          }
+            if (!params || !params.data) return '';
+            var d = params.data;
+            var name = (params.name || '').replace(/\n/g, ' ');
+            var numStr = getBoxDisplayValue(d, metricKey);
+            var fontSize = computeBoxFontSize(params.rect, name.length, numStr.length, TREEMAP_BOX_FONT_SCALE);
+            var styleKey = '_' + fontSize;
+            return '{' + styleKey + '|' + name + '\n' + numStr + '}';
+          },
+          rich: treemapLabelRich
         },
         upperLabel: {
           show: true,
-          height: 28,
-          color: '#fff',
+          height: 18,
+          color: '#0f172a',
           fontWeight: 'bold',
-          backgroundColor: '#374151',
-          padding: [4, 8],
+          backgroundColor: '#e2e8f0',
+          padding: [2, 4],
+          overflow: 'truncate',
           formatter: function(params) {
-            if (!params || !params.name || !params.rect) return '';
+            if (!params || !params.name) return '';
             var r = params.rect;
-            if (r.height < 28 || r.width < 72) return '';
-            return params.name;
+            if (r && (r.height < 12 || r.width < 28)) return '';
+            var name = params.name;
+            if (params.data && params.data.isCorporation && params.data.rate != null) name += '  ' + params.data.rate + '%';
+            return name;
           }
         },
         levels: [
-          { itemStyle: { borderWidth: 2, borderColor: '#fff' }, upperLabel: { show: true, fontSize: 18, color: '#fff', fontWeight: 'bold', backgroundColor: '#374151', padding: [4, 8] } },
-          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)' }, upperLabel: { show: true, fontSize: 14, color: '#fff', fontWeight: 'bold', backgroundColor: '#4b5563', padding: [4, 8] } },
-          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' }, upperLabel: { show: true, fontSize: 12, color: '#fff', backgroundColor: '#4b5563', padding: [2, 6] } },
-          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }, upperLabel: { show: true, fontSize: 11, color: '#fff', backgroundColor: '#4b5563', padding: [2, 6] } },
-          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' }, upperLabel: { show: false } }
+          { itemStyle: { borderWidth: 2, borderColor: '#fff', gapWidth: 0, gapHeight: 0 }, label: { show: true }, upperLabel: { show: true, fontSize: 10, color: '#0f172a', fontWeight: 'bold', backgroundColor: '#e2e8f0', padding: [2, 6] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', gapWidth: 0, gapHeight: 0 }, label: { show: true }, upperLabel: { show: true, fontSize: 9, color: '#0f172a', fontWeight: 'bold', backgroundColor: '#e2e8f0', padding: [2, 4] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)', gapWidth: 0, gapHeight: 0 }, label: { show: true }, upperLabel: { show: true, fontSize: 8, color: '#0f172a', fontWeight: 'bold', backgroundColor: '#cbd5e1', padding: [1, 4] } },
+          { itemStyle: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', gapWidth: 0, gapHeight: 0 }, label: { show: true }, upperLabel: { show: true, fontSize: 8, color: '#0f172a', fontWeight: 'bold', backgroundColor: '#cbd5e1', padding: [1, 3] } }
         ]
       }]
     }, true);
@@ -1333,10 +1483,33 @@
       });
     });
 
-    var treemapSizeEl = document.getElementById('treemap-size-metric');
+    var treemapMetricEl = document.getElementById('treemap-metric');
     var treemapColorEl = document.getElementById('treemap-color-metric');
-    if (treemapSizeEl) treemapSizeEl.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
+    if (treemapMetricEl) treemapMetricEl.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
     if (treemapColorEl) treemapColorEl.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
+    var treemapAxisRegion = document.getElementById('treemap-axis-region');
+    var treemapAxisProduct = document.getElementById('treemap-axis-product');
+    if (treemapAxisRegion) treemapAxisRegion.addEventListener('click', function() {
+      if (currentView !== 'advanced') return;
+      treemapAxisRegion.classList.add('active');
+      treemapAxisRegion.setAttribute('aria-pressed', 'true');
+      if (treemapAxisProduct) { treemapAxisProduct.classList.remove('active'); treemapAxisProduct.setAttribute('aria-pressed', 'false'); }
+      renderTreemap();
+    });
+    if (treemapAxisProduct) treemapAxisProduct.addEventListener('click', function() {
+      if (currentView !== 'advanced') return;
+      treemapAxisProduct.classList.add('active');
+      treemapAxisProduct.setAttribute('aria-pressed', 'true');
+      if (treemapAxisRegion) { treemapAxisRegion.classList.remove('active'); treemapAxisRegion.setAttribute('aria-pressed', 'false'); }
+      renderTreemap();
+    });
+    var treemapContainerEl = document.getElementById('treemap-container');
+    if (treemapContainerEl && typeof ResizeObserver !== 'undefined') {
+      var treemapResizeObserver = new ResizeObserver(function() {
+        if (chartTreemap) chartTreemap.resize();
+      });
+      treemapResizeObserver.observe(treemapContainerEl);
+    }
 
     document.querySelectorAll('.kpi-card-metric').forEach(function(card) {
       card.addEventListener('click', function() {
@@ -1461,6 +1634,7 @@
         if (chartLine) chartLine.resize();
         if (chartBarRegion) chartBarRegion.resize();
         if (chartBarProduct) chartBarProduct.resize();
+        if (chartTreemap) chartTreemap.resize();
         adjustBarChartHeight();
       }, 220);
       checkHorizontalOverflow();
@@ -1475,6 +1649,7 @@
         if (chartLine) chartLine.resize();
         if (chartBarRegion) chartBarRegion.resize();
         if (chartBarProduct) chartBarProduct.resize();
+        if (chartTreemap) chartTreemap.resize();
         adjustBarChartHeight();
       }, 220);
       checkHorizontalOverflow();

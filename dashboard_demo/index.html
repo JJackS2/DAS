@@ -62,22 +62,35 @@
       </div>
       </div>
       <div id="main-advanced" class="main-view" style="display:none;">
-        <div class="treemap-header">
-          <h4 class="chart-title">Treemap</h4>
-          <div class="treemap-toolbar">
-            <label>크기(Size)</label>
-            <select id="treemap-size-metric" aria-label="크기 메트릭">
-              <option value="sales">판매</option>
-              <option value="smart_sales">스마트 판매</option>
-              <option value="connected">연결대수</option>
-            </select>
-            <label>색상(Color)</label>
-            <select id="treemap-color-metric" aria-label="색상 메트릭">
-              <option value="connected_rate_pct">연결률</option>
-              <option value="smart_sales_rate_pct">스마트 판매 비율</option>
-            </select>
+        <header class="treemap-header" role="toolbar" aria-label="트리맵 설정">
+          <span class="treemap-header-title">Treemap</span>
+          <div class="treemap-header-row">
+            <div class="treemap-field">
+              <label for="treemap-metric" class="treemap-field-label">메트릭</label>
+              <select id="treemap-metric" class="treemap-field-control" aria-label="크기·표시 메트릭">
+                <option value="sales">판매</option>
+                <option value="smart_sales">스마트 판매</option>
+                <option value="connected">연결대수</option>
+                <option value="connected_rate_pct">연결률</option>
+                <option value="smart_sales_rate_pct">스마트 판매 비율</option>
+              </select>
+            </div>
+            <div class="treemap-field">
+              <label for="treemap-color-metric" class="treemap-field-label">색상</label>
+              <select id="treemap-color-metric" class="treemap-field-control" aria-label="색상 메트릭">
+                <option value="connected_rate_pct">연결률</option>
+                <option value="smart_sales_rate_pct">스마트 판매 비율</option>
+              </select>
+            </div>
+            <div class="treemap-field treemap-field-axis">
+              <span class="treemap-field-label">레이블축</span>
+              <div class="treemap-axis-btns">
+                <button type="button" id="treemap-axis-region" class="treemap-axis-btn active" aria-pressed="true">지역</button>
+                <button type="button" id="treemap-axis-product" class="treemap-axis-btn" aria-pressed="false">제품군</button>
+              </div>
+            </div>
           </div>
-        </div>
+        </header>
         <div class="treemap-chart-wrap">
           <div id="treemap-container" class="treemap-container"></div>
           <p class="treemap-hint" aria-hidden="true">마우스 휠로 확대/축소, 드래그로 이동</p>
