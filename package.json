@@ -1,0 +1,21 @@
+{
+  "name": "das",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:treemap-quality": "playwright test tests/treemap/quality_runner.spec.ts",
+    "test": "playwright test",
+    "install:browsers": "playwright install chromium",
+    "serve": "serve dashboard_demo -l 3000",
+    "test:treemap-quality:ci": "cross-env CI=1 playwright test tests/treemap/quality_runner.spec.ts",
+    "test:dashboard-tier": "playwright test tests/treemap/dashboard_tier_evaluation.spec.ts",
+    "test:screenshot": "cross-env CAPTURE_SCREENSHOTS=1 playwright test tests/treemap/dashboard_tier_evaluation.spec.ts --grep screenshot",
+    "autopilot:treemap": "playwright test tests/treemap/ --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "cross-env": "^7.0.3",
+    "serve": "^14.2.0",
+    "typescript": "^5.0.0"
+  }
+}

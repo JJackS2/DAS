@@ -99,10 +99,13 @@
               var regionScale = REGION_SCALE[region] != null ? REGION_SCALE[region] : 1;
               var entityScale = ENTITY_SCALE[entity] != null ? ENTITY_SCALE[entity] : 1;
               var sales = Math.max(1, Math.round(baseSales * regionScale * entityScale));
-              var smartRatio = 0.68 + (seed % 20) / 100;
-              var connRatio = 0.65 + (seed % 25) / 100;
-              var smart_sales = Math.round(sales * smartRatio);
-              var connected = Math.round(smart_sales * connRatio);
+              // 0%~100% 전 구간 색상 분포: 11단계(0,10..100) + 연속값 혼합
+              var step = seed % 11;
+              var smartRatio = step === 0 ? 0.02 : (step === 10 ? 0.98 : (0.08 + (seed % 85) / 100));
+              var connStep = (seed * 7 + 11) % 11;
+              var connRatio = connStep === 0 ? 0.02 : (connStep === 10 ? 0.98 : (0.05 + ((seed * 3 + 17) % 91) / 100));
+              var smart_sales = Math.max(0, Math.round(sales * smartRatio));
+              var connected = Math.max(0, Math.round(smart_sales * connRatio));
               out.push({
                 year_month: MONTHS[mi],
                 region: region,
@@ -173,7 +176,7 @@
   function fmtCompact(n) {
     if (n == null || isNaN(n)) return '—';
     var v = Number(n);
-    if (v >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'G';
+    if (v >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
     if (v >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
     if (v >= 1e3) return (v / 1e3).toFixed(1).replace(/\.0$/, '') + 'K';
     return String(Math.round(v));
@@ -206,6 +209,528 @@
       pill.textContent = 'CACHE —';
       pill.className = 'pill';
     }
+  }
+
+  // --- Advanced Treemap v4 (6-axis, baseOption, tuning) ---
+  var ADV_SIZE_METRICS = ['sales_count', 'smart_sales_count', 'connected_count', 'device_count'];
+  var ADV_COLOR_METRICS = ['installation_rate_pct', 'connection_rate_pct'];
+  function getRowSizeValue(row, sizeMetric) {
+    if (sizeMetric === 'sales_count') return row.sales || 0;
+    if (sizeMetric === 'smart_sales_count') return row.smart_sales || 0;
+    if (sizeMetric === 'connected_count') return row.connected || 0;
+    if (sizeMetric === 'device_count') return row.connected || 0;
+    return row.sales || 0;
+  }
+  function getRowColorValue(row, colorMetric) {
+    var sales = row.sales || 0, smart = row.smart_sales || 0, conn = row.connected || 0;
+    var v = 0;
+    if (colorMetric === 'installation_rate_pct') v = sales > 0 ? (smart / sales * 100) : 0;
+    else if (colorMetric === 'connection_rate_pct') v = smart > 0 ? (conn / smart * 100) : 0;
+    return Math.max(0, Math.min(100, v));
+  }
+  function aggregateLevel(rows, keysByLevel, levelIndex, sizeMetric, colorMetric, maps) {
+    var keyField = keysByLevel[levelIndex];
+    var groups = {};
+    for (var i = 0; i < rows.length; i++) {
+      var r = rows[i];
+      var k = (r[keyField] == null || r[keyField] === '') ? '(Unknown)' : String(r[keyField]);
+      if (!groups[k]) groups[k] = [];
+      groups[k].push(r);
+    }
+    var children = [];
+    var keys = Object.keys(groups).sort();
+    var isLeafLevel = levelIndex === keysByLevel.length - 1;
+    for (var ki = 0; ki < keys.length; ki++) {
+      var key = keys[ki];
+      var sub = groups[key];
+      var sumVal = 0, sumActual = 0, colorW = 0;
+      for (var si = 0; si < sub.length; si++) {
+        var r = sub[si];
+        var actual = getRowSizeValue(r, sizeMetric);
+        sumActual += actual;
+        sumVal += actual;
+        colorW += getRowColorValue(r, colorMetric) * actual;
+      }
+      var colorVal = sumVal > 0 ? colorW / sumVal : 0;
+      colorVal = Math.max(0, Math.min(100, colorVal));
+      var label = key;
+      if (keyField === 'region' && maps && maps.region) label = maps.region[key] || key;
+      if (keyField === 'entity' && maps && maps.corporation) label = maps.corporation[key] || key;
+      var node = {
+        name: label,
+        value: Math.max(1, Math.round(sumVal)),
+        actualValue: Math.round(sumActual),
+        colorValue: Math.round(colorVal * 10) / 10,
+        level: levelIndex + 1,
+        isOther: false,
+        children: undefined
+      };
+      if (!isLeafLevel) {
+        node.children = aggregateLevel(sub, keysByLevel, levelIndex + 1, sizeMetric, colorMetric, maps);
+        var childSum = 0;
+        for (var ci = 0; ci < node.children.length; ci++) childSum += node.children[ci].value;
+        node.value = Math.max(1, childSum);
+      }
+      children.push(node);
+    }
+    return children;
+  }
+  function buildHierarchyRegionFirst(rows, sizeMetric, colorMetric) {
+    var maps = getRegionLabelMaps();
+    var keysByLevel = ['region', 'entity', 'product_level1', 'product_level2', 'product_level3'];
+    if (!rows.length) return [{ name: 'Global', value: 0, actualValue: 0, colorValue: 0, level: 0, children: [] }];
+    var children = aggregateLevel(rows, keysByLevel, 0, sizeMetric, colorMetric, maps);
+    var totalVal = 0, totalActual = 0;
+    for (var i = 0; i < children.length; i++) { totalVal += children[i].value; totalActual += children[i].actualValue; }
+    return [{
+      name: 'Global',
+      value: Math.max(1, totalVal),
+      actualValue: totalActual,
+      colorValue: 0,
+      level: 0,
+      children: children
+    }];
+  }
+  function buildHierarchyProductFirst(rows, sizeMetric, colorMetric) {
+    var maps = getRegionLabelMaps();
+    var keysByLevel = ['product_level1', 'product_level2', 'product_level3', 'region', 'entity'];
+    if (!rows.length) return [{ name: 'Global', value: 0, actualValue: 0, colorValue: 0, level: 0, children: [] }];
+    var children = aggregateLevel(rows, keysByLevel, 0, sizeMetric, colorMetric, maps);
+    var totalVal = 0, totalActual = 0;
+    for (var i = 0; i < children.length; i++) { totalVal += children[i].value; totalActual += children[i].actualValue; }
+    return [{
+      name: 'Global',
+      value: Math.max(1, totalVal),
+      actualValue: totalActual,
+      colorValue: 0,
+      level: 0,
+      children: children
+    }];
+  }
+  var ADV_LEVELS_BASE = [
+    { itemStyle: { borderWidth: 2, gapWidth: 2, borderColor: 'rgba(0,0,0,0.12)' }, upperLabel: { show: true, fontSize: 12 } },
+    { itemStyle: { borderWidth: 2, gapWidth: 2, borderColor: 'rgba(0,0,0,0.1)' }, upperLabel: { show: true, fontSize: 11 } },
+    { itemStyle: { borderWidth: 2, gapWidth: 2, borderColor: 'rgba(0,0,0,0.1)' }, upperLabel: { show: true, fontSize: 10 } },
+    { itemStyle: { borderWidth: 1, gapWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }, upperLabel: { show: false } },
+    { itemStyle: { borderWidth: 1, gapWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }, upperLabel: { show: false } },
+    { itemStyle: { borderWidth: 1, gapWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }, upperLabel: { show: false } }
+  ];
+  var ADV_LEVELS_TEMPLATE = ADV_LEVELS_BASE;
+  function cloneTree(node) {
+    var c = { name: node.name, value: node.value, actualValue: node.actualValue, colorValue: node.colorValue, level: node.level, isOther: node.isOther };
+    if (node.children && node.children.length) c.children = node.children.map(cloneTree);
+    return c;
+  }
+  function applyAreaScaleTree(node, scale) {
+    if (scale === 'sqrt') {
+      if (typeof node.value === 'number' && node.value > 0) node.value = Math.sqrt(node.value);
+      if (node.children) node.children.forEach(function(c) { applyAreaScaleTree(c, scale); });
+    } else if (scale === 'log1p') {
+      if (typeof node.value === 'number' && node.value >= 0) node.value = Math.log1p(node.value);
+      if (node.children) node.children.forEach(function(c) { applyAreaScaleTree(c, scale); });
+    }
+  }
+  function collectLeaves(node, out) {
+    if (!node.children || !node.children.length) { out.push(node); return; }
+    for (var i = 0; i < node.children.length; i++) collectLeaves(node.children[i], out);
+  }
+  function applyTopNOther(rootList, leafCap, topN) {
+    if (!rootList || !rootList.length) return;
+    var leaves = [];
+    collectLeaves(rootList[0], leaves);
+    if (leaves.length <= leafCap) return;
+    leaves.sort(function(a, b) { return (b.actualValue || 0) - (a.actualValue || 0); });
+    var keep = leaves.slice(0, topN);
+    var otherVal = 0, otherActual = 0, otherColorW = 0;
+    for (var i = topN; i < leaves.length; i++) {
+      otherVal += leaves[i].value || 0;
+      otherActual += leaves[i].actualValue || 0;
+      otherColorW += (leaves[i].colorValue || 0) * (leaves[i].actualValue || 0);
+    }
+    var otherColor = otherActual > 0 ? otherColorW / otherActual : 0;
+    var parent = rootList[0];
+    if (!parent.children) return;
+    parent.children = keep.map(function(n) { return cloneTree(n); });
+    parent.children.push({
+      name: 'Other',
+      value: Math.max(1, otherVal),
+      actualValue: otherActual,
+      colorValue: Math.max(0, Math.min(100, otherColor)),
+      level: keep[0] ? keep[0].level : 6,
+      isOther: true,
+      children: undefined
+    });
+    var childSum = 0;
+    for (var j = 0; j < parent.children.length; j++) childSum += parent.children[j].value;
+    parent.value = Math.max(1, childSum);
+  }
+  function mapNodeToEcharts(n) {
+    var item = {
+      name: n.name,
+      value: [n.value, n.colorValue != null ? Math.max(0, Math.min(100, n.colorValue)) : 50],
+      actualValue: n.actualValue,
+      colorValue: n.colorValue != null ? Math.max(0, Math.min(100, n.colorValue)) : 50,
+      level: n.level,
+      isOther: n.isOther
+    };
+    if (n.__minSide != null) item.__minSide = n.__minSide;
+    item.itemStyle = { borderWidth: n.itemStyle && n.itemStyle.borderWidth != null ? n.itemStyle.borderWidth : 1 };
+    if (n.children && n.children.length) item.children = n.children.map(function(c) { return mapNodeToEcharts(c); });
+    return item;
+  }
+  function getLeafLayoutsFromChart(chart) {
+    if (!chart) return [];
+    try {
+      var model = chart.getModel();
+      var seriesModel = model && model.getSeriesByIndex && model.getSeriesByIndex(0);
+      if (!seriesModel || !seriesModel.getData) return [];
+      var data = seriesModel.getData();
+      var out = [];
+      var tree = data.getTree && data.getTree();
+      if (tree && tree.root && typeof tree.root.eachNode === 'function') {
+        tree.root.eachNode(function(node) {
+          if (node.isLeaf === true || (node.children && node.children.length === 0)) {
+            var layout = node.getLayout && node.getLayout();
+            if (layout && layout.x != null && layout.y != null) {
+              out.push({
+                x: layout.x,
+                y: layout.y,
+                w: layout.width || 0,
+                h: layout.height || 0,
+                dataIndex: node.dataIndex
+              });
+            }
+          }
+        });
+        return out;
+      }
+      for (var i = 0; i < data.count(); i++) {
+        var layout = data.getItemLayout(i);
+        if (!layout || layout.x == null || layout.y == null) continue;
+        out.push({
+          x: layout.x,
+          y: layout.y,
+          w: layout.width || 0,
+          h: layout.height || 0,
+          dataIndex: i
+        });
+      }
+      return out;
+    } catch (e) { return []; }
+  }
+  function computeQualityFromLayouts(layouts) {
+    if (!layouts.length) return { arP95: 0, arMax: 0, minP50: 0, tinyPct: 0 };
+    var ars = [], mins = [];
+    for (var i = 0; i < layouts.length; i++) {
+      var w = layouts[i].w || 0, h = layouts[i].h || 0;
+      if (w <= 0 || h <= 0) continue;
+      var ar = Math.max(w / h, h / w);
+      ars.push(ar);
+      mins.push(Math.min(w, h));
+    }
+    ars.sort(function(a, b) { return a - b; });
+    mins.sort(function(a, b) { return a - b; });
+    var p95Idx = Math.floor(ars.length * 0.95);
+    var p50Idx = Math.floor(mins.length * 0.5);
+    var arP95 = ars[p95Idx] != null ? ars[p95Idx] : 0;
+    var arMax = Math.max.apply(null, ars);
+    var minP50 = mins[p50Idx] != null ? mins[p50Idx] : 0;
+    var tinyCount = 0;
+    for (var j = 0; j < mins.length; j++) { if (mins[j] < 10) tinyCount++; }
+    var tinyPct = layouts.length ? (tinyCount / layouts.length * 100) : 0;
+    return { arP95: arP95, arMax: arMax, minP50: minP50, tinyPct: tinyPct };
+  }
+  function getAcceptance(metrics) {
+    if (metrics.arP95 <= 6 && metrics.arMax <= 12 && metrics.minP50 >= 18 && metrics.tinyPct <= 15) return 'GOAL';
+    if (metrics.arP95 <= 8 && metrics.arMax <= 16 && metrics.minP50 >= 14 && metrics.tinyPct <= 25) return 'SOFT';
+    if (metrics.arP95 <= 10 && metrics.arMax <= 20 && metrics.minP50 >= 12 && metrics.tinyPct <= 35) return 'HARD';
+    return 'FAIL';
+  }
+  function chooseAreaScaleBySkew(leaves) {
+    if (!leaves || !leaves.length) return 'none';
+    var vals = leaves.map(function(n) { return n.actualValue || 0; });
+    vals.sort(function(a, b) { return a - b; });
+    var p50 = vals[Math.floor(vals.length * 0.5)] || 1;
+    var p99 = vals[Math.floor(vals.length * 0.99)] || p50;
+    var skew = p99 / Math.max(p50, 1);
+    if (skew < 20) return 'none';
+    if (skew < 100) return 'sqrt';
+    return 'log1p';
+  }
+
+  var advTreemapState = { areaScale: 'none', leafDepth: 6, visibleMin: 8, childrenVisibleMin: 8, topN: 0, leafCap: 0, acceptance: null, selectedNode: null, fontZoom: 1 };
+  function renderTreemapV4(list) {
+    var rootModeRegion = document.getElementById('adv-rootmode-region');
+    var rootMode = (rootModeRegion && rootModeRegion.classList.contains('active')) ? 'region' : 'product';
+    var sizeMetric = (document.getElementById('adv-size-metric-select') || {}).value || 'sales_count';
+    var colorMetric = (document.getElementById('adv-color-metric-select') || {}).value || 'installation_rate_pct';
+    var hierarchy = rootMode === 'region' ? buildHierarchyRegionFirst(list, sizeMetric, colorMetric) : buildHierarchyProductFirst(list, sizeMetric, colorMetric);
+    var leaves = [];
+    collectLeaves(hierarchy[0], leaves);
+    var areaScale = chooseAreaScaleBySkew(leaves);
+    advTreemapState.areaScale = areaScale;
+    var tree = [cloneTree(hierarchy[0])];
+    applyAreaScaleTree(tree[0], areaScale);
+    var step = 0;
+    if (leaves.length > 250) {
+      applyTopNOther(tree, 250, 200);
+      step = 3;
+      advTreemapState.visibleMin = 12;
+      advTreemapState.childrenVisibleMin = 12;
+      advTreemapState.leafDepth = 6;
+    } else {
+      advTreemapState.visibleMin = areaScale === 'none' ? 8 : 10;
+      advTreemapState.childrenVisibleMin = advTreemapState.visibleMin;
+    }
+    function lerp(t) {
+      t = Math.max(0, Math.min(1, t / 100));
+      var r = Math.round(220 - t * 198), g = Math.round(38 + t * 125), b = Math.round(74 - t * 52);
+      return '#' + [r, g, b].map(function(x) { return x.toString(16).padStart(2, '0'); }).join('');
+    }
+    var treeData = tree.map(function(n) { return mapNodeToEcharts(n); });
+    var baseOption = {
+      animation: false,
+      tooltip: {
+        trigger: 'item',
+        confine: true,
+        formatter: function(info) {
+          if (!info || !info.data) return '';
+          var d = info.data;
+          var actual = d.actualValue != null ? fmtNum(d.actualValue) : '—';
+          var pct = d.colorValue != null ? (Number(d.colorValue).toFixed(1) + '%') : '—';
+          return (info.name || '') + '<br/>actual: ' + actual + '<br/>' + pct;
+        }
+      },
+      visualMap: {
+        type: 'continuous',
+        min: 0,
+        max: 100,
+        dimension: 1,
+        orient: 'vertical',
+        right: 10,
+        bottom: 10,
+        itemWidth: 12,
+        itemHeight: 80,
+        textStyle: { fontSize: 9, color: '#000' },
+        inRange: { color: ['#dc2626', '#eab308', '#16a34a'] }
+      },
+      series: [{
+        type: 'treemap',
+        id: 'advanced-treemap',
+        roam: true,
+        nodeClick: 'zoomToNode',
+        sort: 'desc',
+        breadcrumb: {
+          show: true,
+          left: 8,
+          top: 8,
+          itemStyle: {
+            textStyle: { fontSize: 10, color: '#000' },
+            borderColor: '#cbd5e1',
+            borderWidth: 1,
+            color: '#f8fafc'
+          },
+          emphasisItemStyle: { color: '#e2e8f0' }
+        },
+        label: { show: true, color: '#000' },
+        upperLabel: {
+          show: true,
+          color: '#000',
+          overflow: 'truncate',
+          formatter: function(params) {
+            if (!params || !params.name) return '';
+            var r = params.rect;
+            if (r && (r.height < 14 || r.width < 36)) return '';
+            var name = (params.name || '').replace(/\n/g, ' ').trim();
+            return name.length > 24 ? name.slice(0, 22) + '…' : name;
+          }
+        },
+        itemStyle: { borderWidth: 1, gapWidth: 2, gapHeight: 2, borderColor: 'rgba(0,0,0,0.08)' },
+        visibleMin: advTreemapState.visibleMin,
+        childrenVisibleMin: advTreemapState.childrenVisibleMin,
+        leafDepth: advTreemapState.leafDepth,
+        levels: ADV_LEVELS_TEMPLATE,
+        data: treeData
+      }]
+    };
+    chartTreemap.setOption(baseOption, true);
+    chartTreemap.getZr().flush();
+    setTimeout(function() {
+      var layouts = getLeafLayoutsFromChart(chartTreemap);
+      window.__TREEMAP_DEBUG__ = window.__TREEMAP_DEBUG__ || {};
+      window.__TREEMAP_DEBUG__.chart = chartTreemap;
+      window.__TREEMAP_DEBUG__.lastRenderAt = Date.now();
+      window.__TREEMAP_DEBUG__.leafLayoutsCache = layouts;
+      window.__TREEMAP_DEBUG__.getLeafLayouts = function() {
+        if (window.__TREEMAP_DEBUG__.leafLayoutsCache && window.__TREEMAP_DEBUG__.leafLayoutsCache.length > 0) return window.__TREEMAP_DEBUG__.leafLayoutsCache;
+        return getLeafLayoutsFromChart(chartTreemap);
+      };
+      window.__TREEMAP_DEBUG__.getCase = function() {
+        return { rootMode: rootMode, sizeMetric: sizeMetric, colorMetric: colorMetric };
+      };
+      window.__TREEMAP_DEBUG__.getTopBottom = function(level, n) {
+        n = n || 10;
+        var leaves = [];
+        collectLeaves(hierarchy[0], leaves);
+        leaves.sort(function(a, b) { return (b.actualValue || 0) - (a.actualValue || 0); });
+        return { top: leaves.slice(0, n), bottom: leaves.slice(-n).reverse() };
+      };
+      var metrics = computeQualityFromLayouts(layouts);
+      var acceptance = getAcceptance(metrics);
+      advTreemapState.acceptance = acceptance;
+      var badgeEl = document.getElementById('adv-quality-badge');
+      if (badgeEl) {
+        badgeEl.textContent = acceptance + ' · ' + (advTreemapState.areaScale || 'none') + (advTreemapState.topN ? ' · TopN=' + advTreemapState.topN : '');
+        badgeEl.className = 'adv-quality-badge ' + (acceptance === 'GOAL' ? 'ok' : acceptance === 'FAIL' ? 'fail' : 'warn');
+      }
+      var scaleEl = document.getElementById('adv-area-scale-label');
+      if (scaleEl) scaleEl.textContent = advTreemapState.areaScale || 'none';
+      function injectMinSide(node, layoutsByIndex) {
+        if (node.__minSide != null) return;
+        if (!node.children || !node.children.length) {
+          var l = layoutsByIndex[node.dataIndex];
+          if (l) node.__minSide = Math.min(l.w, l.h);
+          return;
+        }
+        for (var i = 0; i < node.children.length; i++) injectMinSide(node.children[i], layoutsByIndex);
+      }
+      var treeData2 = tree.map(function(n) {
+        var copy = cloneTree(n);
+        function walk(n2, idx) {
+          if (!n2.children || !n2.children.length) {
+            var l = layouts[idx];
+            if (l) n2.__minSide = Math.min(l.w, l.h);
+            return idx + 1;
+          }
+          var next = idx;
+          for (var c = 0; c < n2.children.length; c++) next = walk(n2.children[c], next);
+          return next;
+        }
+        walk(copy, 0);
+        return mapNodeToEcharts(copy);
+      });
+      function shortenName(str, maxLen) {
+        if (!str) return '';
+        str = String(str).replace(/\n/g, ' ').trim();
+        if (str.length <= maxLen) return str;
+        return str.slice(0, Math.max(2, maxLen - 1)) + '…';
+      }
+      var labelFormatter = function(params) {
+        if (!params || !params.data) return '';
+        var d = params.data;
+        var minSide = d.__minSide;
+        if (minSide == null) minSide = 0;
+        var name = (params.name || '').replace(/\n/g, ' ').trim();
+        var num = d.actualValue != null ? fmtCompact(d.actualValue) : '—';
+        var pct = d.colorValue != null ? (Number(d.colorValue).toFixed(1) + '%') : '—';
+        var n14 = name ? shortenName(name, 14) : '';
+        if (minSide >= 44) return name + '\n' + num + '\n' + pct;
+        if (minSide >= 28) return (n14 || '') + '\n' + pct;
+        if (minSide >= 18) return '';
+        return '';
+      };
+      var baseLabelFont = 12;
+      var applyFontZoom = function(zoomFactor) {
+        var z = Math.max(0.7, Math.min(2.2, zoomFactor));
+        advTreemapState.fontZoom = z;
+        var scaledLevels = ADV_LEVELS_BASE.map(function(lvl) {
+          var copy = {};
+          if (lvl.itemStyle) copy.itemStyle = lvl.itemStyle;
+          if (lvl.upperLabel) {
+            copy.upperLabel = {};
+            for (var k in lvl.upperLabel) copy.upperLabel[k] = lvl.upperLabel[k];
+            if (typeof copy.upperLabel.fontSize === 'number') copy.upperLabel.fontSize = Math.round(copy.upperLabel.fontSize * z);
+            if (typeof copy.upperLabel.height === 'number') copy.upperLabel.height = Math.round(copy.upperLabel.height * z);
+          }
+          return copy;
+        });
+        chartTreemap.setOption({
+          series: [{
+            id: 'advanced-treemap',
+            levels: scaledLevels,
+            label: {
+              show: true,
+              color: '#000',
+              fontSize: Math.round(baseLabelFont * z),
+              formatter: labelFormatter,
+              overflow: 'truncate',
+              width: null,
+              height: null
+            }
+          }]
+        }, { replaceMerge: ['series'] });
+      };
+      var fontZoomTimeout;
+      var container = document.getElementById('advanced-treemap-container');
+      if (container) {
+        container.addEventListener('wheel', function(ev) {
+          if (ev.ctrlKey || ev.metaKey) return;
+          var delta = ev.deltaY > 0 ? -0.12 : 0.12;
+          var next = advTreemapState.fontZoom + delta;
+          clearTimeout(fontZoomTimeout);
+          fontZoomTimeout = setTimeout(function() { applyFontZoom(next); }, 80);
+        }, { passive: true });
+      }
+      chartTreemap.setOption({
+        series: [{
+          id: 'advanced-treemap',
+          data: treeData2,
+          label: {
+            show: true,
+            color: '#000',
+            fontSize: Math.round(baseLabelFont * advTreemapState.fontZoom),
+            formatter: labelFormatter,
+            overflow: 'truncate',
+            width: null,
+            height: null
+          }
+        }]
+      }, { replaceMerge: ['series'] });
+      chartTreemap.off('click');
+      chartTreemap.on('click', function(params) {
+        if (params && params.data) {
+          advTreemapState.selectedNode = params.data;
+          var selEl = document.getElementById('adv-selection-stats');
+          if (selEl) {
+            var d = params.data;
+            var cMetric = (document.getElementById('adv-color-metric-select') || {}).value || 'installation_rate_pct';
+            selEl.innerHTML = '<strong>' + (d.name || '') + '</strong><br/>actual: ' + fmtNum(d.actualValue) + '<br/>' + cMetric + ': ' + (d.colorValue != null ? Number(d.colorValue).toFixed(1) + '%' : '—');
+          }
+        }
+      });
+      var advPanel = document.getElementById('adv-right-panel');
+      if (advPanel) advPanel.style.display = currentView === 'advanced' ? 'block' : 'none';
+      var selEl = document.getElementById('adv-selection-stats');
+      if (selEl) {
+        var sel = advTreemapState.selectedNode;
+        if (sel) selEl.innerHTML = '<strong>' + (sel.name || '') + '</strong><br/>actual: ' + fmtNum(sel.actualValue) + '<br/>' + (colorMetric === 'installation_rate_pct' ? 'installation_rate_pct' : 'connection_rate_pct') + ': ' + (sel.colorValue != null ? sel.colorValue.toFixed(1) + '%' : '—');
+        else selEl.innerHTML = '선택 없음 (노드 클릭 시 표시)';
+      }
+      var breadcrumbEl = document.getElementById('adv-breadcrumb');
+      if (breadcrumbEl) breadcrumbEl.textContent = rootMode === 'region' ? 'Global > region > subsidiary > product_group > product2 > product3' : 'Global > product_group > product2 > product3 > region > subsidiary';
+      var tb = window.__TREEMAP_DEBUG__.getTopBottom(undefined, 10);
+      var topListEl = document.getElementById('adv-top-list');
+      var bottomListEl = document.getElementById('adv-bottom-list');
+      if (topListEl) topListEl.innerHTML = (tb.top || []).map(function(n) { return '<div>' + (n.name || '') + ' ' + fmtNum(n.actualValue) + '</div>'; }).join('');
+      if (bottomListEl) bottomListEl.innerHTML = (tb.bottom || []).map(function(n) { return '<div>' + (n.name || '') + ' ' + fmtNum(n.actualValue) + '</div>'; }).join('');
+      var qualitySummary = document.getElementById('adv-quality-summary');
+      if (qualitySummary) qualitySummary.textContent = 'AR P95: ' + metrics.arP95.toFixed(1) + ', MIN P50: ' + metrics.minP50.toFixed(0) + 'px, TINY: ' + metrics.tinyPct.toFixed(1) + '%';
+      var descEl = document.getElementById('left-treemap-desc');
+      if (descEl && hierarchy[0] && hierarchy[0].children) {
+        var topNodes = hierarchy[0].children.slice().sort(function(a, b) { return (b.actualValue || 0) - (a.actualValue || 0); }).slice(0, 3);
+        var names = topNodes.map(function(n) { return n.name; });
+        var sizeLabel = sizeMetric === 'sales_count' ? '판매량' : sizeMetric === 'smart_sales_count' ? '스마트 판매량' : sizeMetric === 'connected_count' ? '연결 수' : '면적 지표';
+        var first = names[0] || '—';
+        var rest = names.slice(1);
+        var desc;
+        if (rootMode === 'region') {
+          desc = '지역 기준으로 ' + first + '가 가장 크고, ' + (rest.length ? rest.join(', ') + ' 순으로 이어집니다. ' : '') + '색상은 연결률 또는 설치률을 나타내며, 노드 클릭으로 해당 구간을 확대하고 마우스 휠로 확대·축소할 수 있습니다.';
+        } else {
+          desc = '제품군 기준으로 ' + first + '가 가장 크고, ' + (rest.length ? rest.join(', ') + ' 순입니다. ' : '') + '색상은 선택한 비율 지표를 나타냅니다. 노드를 클릭하면 해당 영역으로 확대되며 휠로 줌을 조절할 수 있습니다.';
+        }
+        descEl.textContent = desc;
+      }
+    }, 100);
   }
 
   /** Treemap: 축에 따라 지역만(글로벌>지역>법인) 또는 제품군만(글로벌>제품L1>L2>L3). */
@@ -313,10 +838,16 @@
   }
 
   function renderTreemap() {
-    var dom = document.getElementById('treemap-container');
+    var dom = document.getElementById('advanced-treemap-container') || document.getElementById('treemap-container');
     if (!dom || typeof echarts === 'undefined') return;
     if (!chartTreemap) chartTreemap = echarts.init(dom);
     var list = getFilteredData();
+    var advSizeEl = document.getElementById('adv-size-metric-select');
+    var advRootRegion = document.getElementById('adv-rootmode-region');
+    if (currentView === 'advanced' && advSizeEl && advRootRegion) {
+      renderTreemapV4(list);
+      return;
+    }
     var metricEl = document.getElementById('treemap-metric');
     var metricKey = metricEl ? metricEl.value : 'sales';
     var sizeKey = (metricKey === 'connected_rate_pct') ? 'connected' : (metricKey === 'smart_sales_rate_pct') ? 'smart_sales' : metricKey;
@@ -506,15 +1037,25 @@
 
   function switchView(view) {
     currentView = view;
+    var app = document.getElementById('app');
+    if (app) app.classList.toggle('view-advanced', view === 'advanced');
     var overview = document.getElementById('main-overview');
     var advanced = document.getElementById('main-advanced');
     if (overview) overview.style.display = view === 'overview' ? 'flex' : 'none';
     if (advanced) advanced.style.display = view === 'advanced' ? 'flex' : 'none';
+    var advPanel = document.getElementById('adv-right-panel');
+    if (advPanel) advPanel.style.display = view === 'advanced' ? 'block' : 'none';
+    var descPopup = document.getElementById('treemap-desc-popup');
+    if (descPopup) descPopup.style.display = view === 'advanced' ? 'flex' : 'none';
+    var btnToggle = document.getElementById('btn-toggle-panel');
+    var btnExpand = document.getElementById('btn-expand-filter');
+    if (btnToggle) btnToggle.style.display = view === 'advanced' ? 'none' : '';
+    if (btnExpand) btnExpand.style.display = 'none';
     if (view === 'advanced') {
       var renderAttempts = 0;
       function doRender() {
         renderAttempts++;
-        var container = document.getElementById('treemap-container');
+        var container = document.getElementById('advanced-treemap-container') || document.getElementById('treemap-container');
         if (container && (container.offsetParent !== null || renderAttempts > 15)) {
           var w = container.clientWidth || container.offsetWidth;
           var h = container.clientHeight || container.offsetHeight;
@@ -1487,6 +2028,35 @@
     var treemapColorEl = document.getElementById('treemap-color-metric');
     if (treemapMetricEl) treemapMetricEl.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
     if (treemapColorEl) treemapColorEl.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
+    var advRootRegion = document.getElementById('adv-rootmode-region');
+    var advRootProduct = document.getElementById('adv-rootmode-product');
+    if (advRootRegion) advRootRegion.addEventListener('click', function() {
+      if (currentView !== 'advanced') return;
+      advRootRegion.classList.add('active'); advRootRegion.setAttribute('aria-pressed', 'true');
+      if (advRootProduct) { advRootProduct.classList.remove('active'); advRootProduct.setAttribute('aria-pressed', 'false'); }
+      renderTreemap();
+    });
+    if (advRootProduct) advRootProduct.addEventListener('click', function() {
+      if (currentView !== 'advanced') return;
+      advRootProduct.classList.add('active'); advRootProduct.setAttribute('aria-pressed', 'true');
+      if (advRootRegion) { advRootRegion.classList.remove('active'); advRootRegion.setAttribute('aria-pressed', 'false'); }
+      renderTreemap();
+    });
+    var advSizeSelect = document.getElementById('adv-size-metric-select');
+    var advColorSelect = document.getElementById('adv-color-metric-select');
+    if (advSizeSelect) advSizeSelect.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
+    if (advColorSelect) advColorSelect.addEventListener('change', function() { if (currentView === 'advanced') renderTreemap(); });
+    ['adv-preset-region-sales', 'adv-preset-region-conn', 'adv-preset-region-rate', 'adv-preset-product-sales'].forEach(function(id) {
+      var btn = document.getElementById(id);
+      if (btn) btn.addEventListener('click', function() {
+        if (currentView !== 'advanced') return;
+        if (id === 'adv-preset-region-sales') { if (advRootRegion) advRootRegion.click(); advSizeSelect && (advSizeSelect.value = 'sales_count'); }
+        if (id === 'adv-preset-region-conn') { if (advRootRegion) advRootRegion.click(); advSizeSelect && (advSizeSelect.value = 'connected_count'); }
+        if (id === 'adv-preset-region-rate') { if (advRootRegion) advRootRegion.click(); advColorSelect && (advColorSelect.value = 'connection_rate_pct'); }
+        if (id === 'adv-preset-product-sales') { if (advRootProduct) advRootProduct.click(); advSizeSelect && (advSizeSelect.value = 'sales_count'); }
+        renderTreemap();
+      });
+    });
     var treemapAxisRegion = document.getElementById('treemap-axis-region');
     var treemapAxisProduct = document.getElementById('treemap-axis-product');
     if (treemapAxisRegion) treemapAxisRegion.addEventListener('click', function() {
@@ -1503,7 +2073,7 @@
       if (treemapAxisRegion) { treemapAxisRegion.classList.remove('active'); treemapAxisRegion.setAttribute('aria-pressed', 'false'); }
       renderTreemap();
     });
-    var treemapContainerEl = document.getElementById('treemap-container');
+    var treemapContainerEl = document.getElementById('advanced-treemap-container') || document.getElementById('treemap-container');
     if (treemapContainerEl && typeof ResizeObserver !== 'undefined') {
       var treemapResizeObserver = new ResizeObserver(function() {
         if (chartTreemap) chartTreemap.resize();
@@ -1665,6 +2235,62 @@
         renderFilterLists();
       }
     });
+
+    (function initTreemapDescPopup() {
+      var popup = document.getElementById('treemap-desc-popup');
+      var dragHandle = document.getElementById('treemap-desc-drag');
+      var resizeHandle = document.getElementById('treemap-desc-resize');
+      var toggleBtn = document.getElementById('treemap-desc-toggle');
+      if (!popup || !dragHandle) return;
+      if (toggleBtn) {
+        toggleBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          popup.classList.toggle('collapsed');
+          toggleBtn.textContent = popup.classList.contains('collapsed') ? '+' : '−';
+        });
+      }
+      var dragStart = { x: 0, y: 0, left: 0, top: 0 };
+      dragHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        dragStart.x = e.clientX;
+        dragStart.y = e.clientY;
+        dragStart.left = popup.offsetLeft;
+        dragStart.top = popup.offsetTop;
+        function onMove(ev) {
+          var dx = ev.clientX - dragStart.x, dy = ev.clientY - dragStart.y;
+          popup.style.left = (dragStart.left + dx) + 'px';
+          popup.style.top = (dragStart.top + dy) + 'px';
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      if (resizeHandle) {
+        var resizeStart = { x: 0, y: 0, w: 0, h: 0 };
+        resizeHandle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          resizeStart.x = e.clientX;
+          resizeStart.y = e.clientY;
+          resizeStart.w = popup.offsetWidth;
+          resizeStart.h = popup.offsetHeight;
+          function onMove(ev) {
+            var w = Math.max(200, resizeStart.w + (ev.clientX - resizeStart.x));
+            var h = Math.max(80, resizeStart.h + (ev.clientY - resizeStart.y));
+            popup.style.width = w + 'px';
+            popup.style.height = h + 'px';
+          }
+            function onUp() {
+              document.removeEventListener('mousemove', onMove);
+              document.removeEventListener('mouseup', onUp);
+            }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+      }
+    })();
 
     checkHorizontalOverflow();
   }

@@ -1,0 +1,210 @@
+{
+  "generatedAt": "2026-02-26T19:07:02.379Z",
+  "totalCases": 16,
+  "results": [
+    {
+      "rootMode": "region",
+      "sizeMetric": "sales_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "sales_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "smart_sales_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "smart_sales_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.948057437540796,
+        "arMax": 14.212899011844211,
+        "minP50": 17.573502806380404,
+        "tinyPct": 27.125506072874494
+      }
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "connected_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.948057437540796,
+        "arMax": 14.212899011844211,
+        "minP50": 17.573502806380404,
+        "tinyPct": 27.125506072874494
+      }
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "connected_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "device_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    },
+    {
+      "rootMode": "region",
+      "sizeMetric": "device_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "sales_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "sales_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "smart_sales_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "FAIL",
+      "metrics": {
+        "arP95": 3.9165278548609734,
+        "arMax": 22.62614908412255,
+        "minP50": 17.14058373764789,
+        "tinyPct": 26.113360323886642
+      },
+      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
+      "recommended_action": "INCREASE_GROUPING"
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "smart_sales_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.948057437540796,
+        "arMax": 14.212899011844211,
+        "minP50": 17.573502806380404,
+        "tinyPct": 27.125506072874494
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "connected_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.948057437540796,
+        "arMax": 14.212899011844211,
+        "minP50": 17.573502806380404,
+        "tinyPct": 27.125506072874494
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "connected_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "device_count",
+      "colorMetric": "installation_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "device_count",
+      "colorMetric": "connection_rate_pct",
+      "acceptance": "HARD",
+      "metrics": {
+        "arP95": 3.9879225318057063,
+        "arMax": 12.379092897088015,
+        "minP50": 17.153761223889873,
+        "tinyPct": 25.506072874493928
+      }
+    }
+  ]
+}

@@ -28,6 +28,11 @@
         <a href="#">Data Quality</a>
         <a href="#">Advanced</a>
       </nav>
+      <div id="treemap-desc-popup" class="treemap-desc-popup" style="display:none;" aria-label="트리맵 설명">
+        <div class="treemap-desc-popup-title" id="treemap-desc-drag">트리맵 설명 <span class="treemap-desc-toggle" id="treemap-desc-toggle" aria-label="접기">−</span></div>
+        <div class="treemap-desc-popup-body" id="left-treemap-desc"></div>
+        <div class="treemap-desc-popup-resize" id="treemap-desc-resize" aria-label="크기 조절"></div>
+      </div>
     </aside>
     <main id="main">
       <div id="main-overview" class="main-view">
@@ -66,18 +71,54 @@
           <span class="treemap-header-title">Treemap</span>
           <div class="treemap-header-row">
             <div class="treemap-field">
-              <label for="treemap-metric" class="treemap-field-label">메트릭</label>
-              <select id="treemap-metric" class="treemap-field-control" aria-label="크기·표시 메트릭">
-                <option value="sales">판매</option>
-                <option value="smart_sales">스마트 판매</option>
-                <option value="connected">연결대수</option>
-                <option value="connected_rate_pct">연결률</option>
-                <option value="smart_sales_rate_pct">스마트 판매 비율</option>
+              <span class="treemap-field-label">Root</span>
+              <div class="treemap-axis-btns" id="adv-rootmode-toggle">
+                <button type="button" id="adv-rootmode-region" class="treemap-axis-btn active" aria-pressed="true">Region</button>
+                <button type="button" id="adv-rootmode-product" class="treemap-axis-btn" aria-pressed="false">Product</button>
+              </div>
+            </div>
+            <div class="treemap-field">
+              <label for="adv-size-metric-select" class="treemap-field-label">Size</label>
+              <select id="adv-size-metric-select" class="treemap-field-control" aria-label="Size Metric">
+                <option value="sales_count">sales_count</option>
+                <option value="smart_sales_count">smart_sales_count</option>
+                <option value="connected_count">connected_count</option>
+                <option value="device_count">device_count</option>
               </select>
             </div>
             <div class="treemap-field">
-              <label for="treemap-color-metric" class="treemap-field-label">색상</label>
-              <select id="treemap-color-metric" class="treemap-field-control" aria-label="색상 메트릭">
+              <label for="adv-color-metric-select" class="treemap-field-label">Color</label>
+              <select id="adv-color-metric-select" class="treemap-field-control" aria-label="Color Metric">
+                <option value="installation_rate_pct">installation_rate_pct</option>
+                <option value="connection_rate_pct">connection_rate_pct</option>
+              </select>
+            </div>
+            <div class="treemap-field treemap-preset-inline">
+              <span class="treemap-field-label">Preset</span>
+              <div class="treemap-preset-btns">
+                <button type="button" id="adv-preset-region-sales" class="treemap-axis-btn" title="Region-first + 판매">R·판매</button>
+                <button type="button" id="adv-preset-region-conn" class="treemap-axis-btn" title="Region-first + 연결">R·연결</button>
+                <button type="button" id="adv-preset-region-rate" class="treemap-axis-btn" title="Region-first + 연결률">R·연결률</button>
+                <button type="button" id="adv-preset-product-sales" class="treemap-axis-btn" title="Product-first + 판매">P·판매</button>
+              </div>
+            </div>
+            <div class="treemap-field treemap-field-meta">
+              <span id="adv-area-scale-label" class="treemap-field-value">none</span>
+              <span id="adv-quality-badge" class="adv-quality-badge" aria-live="polite">—</span>
+            </div>
+          </div>
+          <div class="treemap-header-row treemap-header-legacy" aria-hidden="true">
+            <div class="treemap-field">
+              <label for="treemap-metric" class="treemap-field-label">메트릭(레거시)</label>
+              <select id="treemap-metric" class="treemap-field-control">
+                <option value="sales">판매</option>
+                <option value="smart_sales">스마트 판매</option>
+                <option value="connected">연결대수</option>
+              </select>
+            </div>
+            <div class="treemap-field">
+              <label for="treemap-color-metric" class="treemap-field-label">색상(레거시)</label>
+              <select id="treemap-color-metric" class="treemap-field-control">
                 <option value="connected_rate_pct">연결률</option>
                 <option value="smart_sales_rate_pct">스마트 판매 비율</option>
               </select>
@@ -92,17 +133,14 @@
           </div>
         </header>
         <div class="treemap-chart-wrap">
-          <div id="treemap-container" class="treemap-container"></div>
-          <p class="treemap-hint" aria-hidden="true">마우스 휠로 확대/축소, 드래그로 이동</p>
-          <div id="treemap-legend" class="treemap-legend" aria-label="색상 스케일">
+          <div id="advanced-treemap-container" class="treemap-container"></div>
+          <p class="treemap-hint" aria-hidden="true">휠: 확대/축소 · 드래그: 이동</p>
+          <div id="treemap-legend" class="treemap-legend treemap-legend-mini" aria-label="색상 스케일">
             <div class="treemap-legend-title"></div>
             <div class="treemap-legend-bar-wrap">
               <span class="treemap-legend-label treemap-legend-min">0%</span>
               <div class="treemap-legend-bar"></div>
               <span class="treemap-legend-label treemap-legend-max">100%</span>
-            </div>
-            <div class="treemap-legend-scale">
-              <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
             </div>
           </div>
         </div>
@@ -137,6 +175,17 @@
         <div class="filter-block">
           <label>제품군</label>
           <div id="filter-product-list" class="filter-list"></div>
+        </div>
+        <div id="adv-right-panel" class="adv-right-panel" style="display:none;" aria-label="Treemap 정보">
+          <div class="filter-panel-header"><h3 class="filter-panel-title">Treemap 정보</h3></div>
+          <div id="adv-breadcrumb" class="adv-breadcrumb"></div>
+          <div id="adv-selection-stats" class="adv-selection-stats"></div>
+          <div id="adv-top-bottom" class="adv-top-bottom">
+            <h4>동일 레벨 Top / Bottom</h4>
+            <div id="adv-top-list"></div>
+            <div id="adv-bottom-list"></div>
+          </div>
+          <div id="adv-quality-summary" class="adv-quality-summary"></div>
         </div>
       </div>
       <div id="filter-expand-slot" class="filter-expand-slot" aria-hidden="true"></div>
