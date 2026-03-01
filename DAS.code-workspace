@@ -1,0 +1,23 @@
+{
+  "folders": [
+    { "path": ".", "name": "DAS (root)" },
+    { "path": "finviz-like-treemap/web", "name": "Dashboard (React+Vite)" },
+    { "path": "finviz-like-treemap/server", "name": "Data API (Express 8787)" },
+    { "path": "finviz-like-treemap/docs", "name": "Treemap docs" },
+    { "path": "tests/treemap", "name": "E2E tests" },
+    { "path": "docs", "name": "Project docs" }
+  ],
+  "settings": {
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/coverage": true,
+      "**/test-results": true,
+      "**/reports": true,
+      "**/*.min.js": true,
+      "**/package-lock.json": true,
+      "**/pnpm-lock.yaml": true
+    }
+  }
+}

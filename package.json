@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build-and-test": "npm run build:dashboard && npm run test:treemap-quality",
     "test:treemap-quality": "playwright test tests/treemap/quality_runner.spec.ts",
     "test": "playwright test",
     "install:browsers": "playwright install chromium",
-    "serve": "serve dashboard_demo -l 3000",
+    "serve": "serve finviz-like-treemap/web/dist -l 3000",
+  "build:dashboard": "cd finviz-like-treemap/web && npm run build",
     "test:treemap-quality:ci": "cross-env CI=1 playwright test tests/treemap/quality_runner.spec.ts",
     "test:dashboard-tier": "playwright test tests/treemap/dashboard_tier_evaluation.spec.ts",
     "test:screenshot": "cross-env CAPTURE_SCREENSHOTS=1 playwright test tests/treemap/dashboard_tier_evaluation.spec.ts --grep screenshot",

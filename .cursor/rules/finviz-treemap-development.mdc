@@ -1,0 +1,28 @@
+---
+description: finviz-like-treemap 앱·서버 개발 시 구조·계약·테스트 계약 준수 및 사용 스킬
+globs: finviz-like-treemap/web/**/*, finviz-like-treemap/server/**/*
+alwaysApply: false
+---
+
+# 트리맵 대시보드 개발 규칙
+
+## 적용 범위
+
+`finviz-like-treemap/web`, `finviz-like-treemap/server` 코드 작성·수정 시. 상세는 **finviz-like-treemap/docs/DEVELOPMENT_RULES.md** 참조.
+
+## 준수 사항 요약
+
+- **구조**: server(8787), web(React 18, Vite 5, ECharts 5). 트리맵 로직 `treemap/`, UI `ui/`.
+- **데이터 계약**: GET /data 응답, state(path, axis, sizeMetric, colorMetric), buildTree 노드 형식(displayLabel, pathToNode 등).
+- **트리맵**: 2레벨, upperLabel(지역), 리프 2줄 레이블, visualMap·클릭 계약.
+- **테스트 계약**: `id="treemap-container"`, `__TREEMAP_DEBUG__.getLeafLayouts()`, 컨트롤 data-testid.
+
+## 명세·문서 변경 시 사용 스킬
+
+명세나 데이터 차원·시각화 규칙을 바꿀 때는 다음 스킬 사용 후 코드 반영:
+
+- **dashboard-layered-spec** (레이어 4 구현 용어)
+- **data-dimensions-spec** (차원 변경 시)
+- **visualization-technique-selection** (기법 변경 시)
+
+규칙 문서 수정 시에는 **das-dashboard-spec-and-skills** 규칙의 스킬 표 참고.

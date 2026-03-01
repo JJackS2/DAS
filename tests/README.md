@@ -23,13 +23,13 @@ npm run install:browsers
 ### Treemap 품질 테스트 (권장)
 
 **서버 자동 기동**  
-로컬 서버가 없으면 Playwright가 `dashboard_demo`를 포트 3000에서 띄운 뒤 테스트를 실행합니다.
+로컬 서버가 없으면 Playwright가 대시보드(finviz-like-treemap)를 빌드한 뒤 `finviz-like-treemap/web/dist`를 포트 3000에서 서빙하며 테스트를 실행합니다.
 
 ```bash
 npm run test:treemap-quality
 ```
 
-- 실행 시 `npx serve dashboard_demo -l 3000`으로 서버가 자동 기동됩니다.
+- 실행 시 `npm run build:dashboard` 후 `npx serve finviz-like-treemap/web/dist -l 3000`으로 서버가 자동 기동됩니다.
 - 이미 3000 포트에서 서버가 떠 있으면 재사용합니다 (`reuseExistingServer`).
 - 결과는 `reports/treemap/treemap_quality_report.json`, `treemap_quality_report.md`에 저장됩니다.
 
@@ -81,7 +81,8 @@ set TREEMAP_BASE_URL=http://localhost:5000 && npm run test:treemap-quality
 | `npm run test:treemap-quality` | Treemap 품질 테스트 (서버 자동 기동) |
 | `npm run test:treemap-quality:ci` | CI용 Treemap 품질 테스트 |
 | `npm run test` | 전체 Playwright 테스트 |
-| `npm run serve` | 대시보드만 포트 3000에서 서비스 |
+| `npm run serve` | 대시보드 빌드물(web/dist)을 포트 3000에서 서비스 (사전에 `npm run build:dashboard` 필요) |
+| `npm run build:dashboard` | 대시보드(finviz-like-treemap/web) 빌드 |
 | `npm run install:browsers` | Chromium 브라우저 설치 |
 
 ## 5. 트러블슈팅

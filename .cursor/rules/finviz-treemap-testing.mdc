@@ -1,0 +1,33 @@
+---
+description: 트리맵 E2E 테스트 작성·실행 시 검증 항목·선택자·서버 및 사용 스킬
+globs: tests/treemap/**/*
+alwaysApply: false
+---
+
+# 트리맵 테스트 규칙
+
+## 적용 범위
+
+`tests/treemap/` 내 Playwright 스펙 작성·수정·실행 시. 상세는 **finviz-like-treemap/docs/TEST_RULES.md** 참조.
+
+## 준수 사항 요약
+
+- **위치·실행**: 루트에서 `npm run test`, `npm run test:treemap-quality`. Chromium, baseURL 3000.
+- **데이터 API**: 품질/리프 테스트는 server 8787 기동 권장.
+- **앱 계약**: treemap-container, main-dashboard, axis/size/color/Back 선택자, `getLeafLayouts()`.
+- **선택자**: data-testid > id > 역할/텍스트. 변경 시 DEVELOPMENT_RULES §5·TEST_RULES §4 동기화.
+
+## 품질·헤더·티어 검증
+
+- quality_runner: axis×size×color 조합, getLeafLayouts → AR/MIN/TINY, GOAL·SOFT·HARD·FAIL.
+- treemap-header-layout: 오버플로우·폰트 9px·Preset 한 줄.
+- dashboard_tier_evaluation: 색상 범례·로밍·품질 배지 등.
+
+## 품질 지표·논문 반영 시 사용 스킬
+
+테스트 기준(AR, min side, tiny)을 논문/명세와 맞출 때:
+
+- **literature-based-design** (품질 지표 정의·명세 반영)
+- **dashboard-layered-spec** (레이어 3 품질 표)
+
+선택자·계약 변경 시 **finviz-like-treemap/docs/TEST_RULES.md** §4·§5 및 DEVELOPMENT_RULES §5 함께 수정.

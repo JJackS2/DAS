@@ -1,0 +1,28 @@
+---
+description: 시각화 대시보드 명세·문서 작업 시 적용할 규칙 및 사용 스킬
+globs: finviz-like-treemap/docs/**/*.md
+alwaysApply: false
+---
+
+# 대시보드 명세·문서 규칙
+
+## 적용 범위
+
+`finviz-like-treemap/docs/` 내 명세·참고문헌·규칙 문서(00_SPECIFICATION_LAYERED.md, REFERENCES_*.md, DEVELOPMENT_RULES.md, TEST_RULES.md 등)를 작성·수정할 때 이 규칙을 따른다.
+
+## 작업별 사용 스킬 (`.cursor/skills/`)
+
+| 작업 | 사용 스킬 |
+|------|-----------|
+| 요구사항 수집 | **dashboard-requirements** |
+| 데이터 차원 표·고정/옵션 문구 | **data-dimensions-spec** |
+| 레이어 0–4 계층별 명세 | **dashboard-layered-spec** |
+| 시각화 기법 선정 | **visualization-technique-selection** |
+| 논문 연대기·REFERENCES·품질 지표 | **literature-based-design** |
+| 전체 워크플로(한 번에) | **visualization-dashboard-spec** |
+
+## 문서 구조
+
+- **00_SPECIFICATION_LAYERED.md**: §0.0 비전·BI 위치, §0.5 논문 연대기, §0.6 데이터 차원, 레이어 1–4.
+- **REFERENCES_*.md**: 논문 인용·요약·본 프로젝트 반영 매핑.
+- 명세와 `DEVELOPMENT_RULES.md`·`TEST_RULES.md`의 계약·선택자는 서로 동기화 유지.

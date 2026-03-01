@@ -1,0 +1,15 @@
+{
+  "name": "treemap-server",
+  "type": "module",
+  "scripts": {
+    "extract:subs": "node src/data/extract_subsidiaries_from_ir_pdf.js",
+    "gen": "node src/data/generate_dummy.js",
+    "start": "node src/index.js",
+    "test:treemap-quality": "cd ..\\.. && npm run test:treemap-quality"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pdf-parse": "^1.1.1"
+  }
+}

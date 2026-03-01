@@ -1,209 +1,149 @@
 {
-  "generatedAt": "2026-02-26T19:07:02.379Z",
-  "totalCases": 16,
+  "generatedAt": "2026-02-27T18:13:25.734Z",
+  "totalCases": 12,
   "results": [
     {
-      "rootMode": "region",
-      "sizeMetric": "sales_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "FAIL",
+      "rootMode": "geo",
+      "sizeMetric": "sales",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "region",
-      "sizeMetric": "sales_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "FAIL",
-      "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "region",
-      "sizeMetric": "smart_sales_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "FAIL",
-      "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "region",
-      "sizeMetric": "smart_sales_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
-      "metrics": {
-        "arP95": 3.948057437540796,
-        "arMax": 14.212899011844211,
-        "minP50": 17.573502806380404,
-        "tinyPct": 27.125506072874494
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
-      "rootMode": "region",
-      "sizeMetric": "connected_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "HARD",
+      "rootMode": "geo",
+      "sizeMetric": "sales",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.948057437540796,
-        "arMax": 14.212899011844211,
-        "minP50": 17.573502806380404,
-        "tinyPct": 27.125506072874494
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
-      "rootMode": "region",
-      "sizeMetric": "connected_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
+      "rootMode": "geo",
+      "sizeMetric": "wifi_sales",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
-      "rootMode": "region",
-      "sizeMetric": "device_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "HARD",
+      "rootMode": "geo",
+      "sizeMetric": "wifi_sales",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
-      "rootMode": "region",
-      "sizeMetric": "device_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
+      "rootMode": "geo",
+      "sizeMetric": "connected",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
+      }
+    },
+    {
+      "rootMode": "geo",
+      "sizeMetric": "connected",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
+      "metrics": {
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
       "rootMode": "product",
-      "sizeMetric": "sales_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "FAIL",
+      "sizeMetric": "sales",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "product",
-      "sizeMetric": "sales_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "FAIL",
-      "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "product",
-      "sizeMetric": "smart_sales_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "FAIL",
-      "metrics": {
-        "arP95": 3.9165278548609734,
-        "arMax": 22.62614908412255,
-        "minP50": 17.14058373764789,
-        "tinyPct": 26.113360323886642
-      },
-      "fail_reason": "ASPECT_RATIO_TOO_HIGH",
-      "recommended_action": "INCREASE_GROUPING"
-    },
-    {
-      "rootMode": "product",
-      "sizeMetric": "smart_sales_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
-      "metrics": {
-        "arP95": 3.948057437540796,
-        "arMax": 14.212899011844211,
-        "minP50": 17.573502806380404,
-        "tinyPct": 27.125506072874494
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
       "rootMode": "product",
-      "sizeMetric": "connected_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "HARD",
+      "sizeMetric": "sales",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.948057437540796,
-        "arMax": 14.212899011844211,
-        "minP50": 17.573502806380404,
-        "tinyPct": 27.125506072874494
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
       "rootMode": "product",
-      "sizeMetric": "connected_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
+      "sizeMetric": "wifi_sales",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
       "rootMode": "product",
-      "sizeMetric": "device_count",
-      "colorMetric": "installation_rate_pct",
-      "acceptance": "HARD",
+      "sizeMetric": "wifi_sales",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     },
     {
       "rootMode": "product",
-      "sizeMetric": "device_count",
-      "colorMetric": "connection_rate_pct",
-      "acceptance": "HARD",
+      "sizeMetric": "connected",
+      "colorMetric": "attach_rate",
+      "acceptance": "GOAL",
       "metrics": {
-        "arP95": 3.9879225318057063,
-        "arMax": 12.379092897088015,
-        "minP50": 17.153761223889873,
-        "tinyPct": 25.506072874493928
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
+      }
+    },
+    {
+      "rootMode": "product",
+      "sizeMetric": "connected",
+      "colorMetric": "connect_rate",
+      "acceptance": "GOAL",
+      "metrics": {
+        "arP95": 1.8497632785705962,
+        "arMax": 2.9088865076605996,
+        "minP50": 36.03801956458369,
+        "tinyPct": 0.43668122270742354
       }
     }
   ]

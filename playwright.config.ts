@@ -19,10 +19,10 @@ export default defineConfig({
   },
   webServer: useServer
     ? {
-        command: 'npx serve dashboard_demo -l 3000',
+        command: 'npm run build:dashboard && npx serve finviz-like-treemap/web/dist -l 3000',
         url: 'http://127.0.0.1:3000',
         reuseExistingServer: !process.env.CI,
-        timeout: 15000,
+        timeout: 60000,
       }
     : undefined,
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

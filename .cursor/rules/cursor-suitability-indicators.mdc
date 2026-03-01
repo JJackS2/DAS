@@ -1,0 +1,30 @@
+---
+description: Cursor 적합성 평가 지표 유지 — 규칙·스킬·문서·명령·검증이 평가 기준을 만족하도록 유지
+globs: .cursor/**/*, docs/CURSOR_*.md, docs/ARCHITECTURE.md, docs/MODULES.md, docs/PROJECT_GUIDE.md, AGENTS.md
+alwaysApply: false
+---
+
+# Cursor 적합성 지표 유지
+
+## 목적
+
+이 규칙이 적용되는 파일을 수정할 때, **Cursor 적합성 평가 지표**를 만족하도록 유지한다. 평가 기준·점수·등급은 `docs/CURSOR_SUITABILITY_EVALUATION.md`에 정의되어 있으며, “점수 기준가 무엇인지”, “왜 높게 만족하면 잘 만들어진 것으로 보는지”는 해당 문서 §0에 기술되어 있다.
+
+## 유지할 지표 (요약)
+
+- **규칙**: globs 명시, 작업별 스킬 표, 한 관심사·50줄 권장, 캐노니컬 참조, description 구체적.
+- **스킬**: description에 WHAT+WHEN·트리거 용어, 단일 책임, 500줄·참조 1단계, 다음 단계 명시.
+- **문서**: 프로젝트 아키텍처·모듈 설명·알고리즘·계약·루트 맥락(AGENTS.md) 문서 유지.
+- **명령·워크스페이스·인덱싱**: .cursor/commands 2개 이상, DAS.code-workspace, .cursorignore 또는 search.exclude.
+- **검증**: E2E 테스트·계약 문서화(TEST_RULES §4, DEVELOPMENT_RULES §5) 유지.
+
+## 평가 실행
+
+- **평가 방법**: 스킬 **cursor-suitability-evaluation** 사용. “Cursor 적합성 평가해 줘”, “점수 재평가해 줘” 등으로 요청하면 해당 스킬이 `CURSOR_SUITABILITY_EVALUATION.md`의 체크리스트에 따라 평가하고 `CURSOR_SUITABILITY_SCORE.md`를 갱신한다.
+- **규칙에 해당 지표를 만족하도록 되어 있는가**: 이 규칙(cursor-suitability-indicators.mdc)이 “해당 지표를 만족하도록 유지하라”는 지시를 담고 있으며, 상세 기준은 평가 문서·스킬을 따른다.
+
+## 참조
+
+- 평가 방법·기준·점수 근거: `docs/CURSOR_SUITABILITY_EVALUATION.md`
+- 최신 점수·등급: `docs/CURSOR_SUITABILITY_SCORE.md`
+- 평가 실행 스킬: `.cursor/skills/cursor-suitability-evaluation/SKILL.md`
